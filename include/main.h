@@ -30,8 +30,7 @@ Adafruit_SH1106G display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 // Define the task handle
 TaskHandle_t buttonTaskHandle = NULL;
+TaskHandle_t bluetoothTaskHandle = NULL;
 void buttonTask(void* pvParameters);
-void sendBT(const void* data, size_t dataSize);
-void receiveBT(void* data, size_t dataSize);
 
 #endif // MAIN_H
