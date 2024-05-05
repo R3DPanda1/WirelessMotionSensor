@@ -1,8 +1,4 @@
-#include <modes.h>
-
-volatile OperationMode currentOperationMode = MODE_LINACQUAD;
-volatile BluetoothMode currentBluetoothMode = MODE_DISCONNECTED;
-volatile RecordingMode currentRecordingMode = NONE;
+#include <button.h>
 
 TaskHandle_t buttonTaskHandle = NULL;
 

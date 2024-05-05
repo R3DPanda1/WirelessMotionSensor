@@ -4,9 +4,7 @@
 #include <Arduino.h>
 #include <Adafruit_SH110X.h>
 #include <Adafruit_GFX.h>
-#include <sensor.h>
-#include <modes.h>
-#include <bluetooth.h>
+#include "commons.h"
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 

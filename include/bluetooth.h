@@ -2,7 +2,9 @@
 #define BLUETOOTH_H
 
 #include "BluetoothSerial.h"
-#include "sensor.h"
+#include "commons.h"
+
+#define BT_LED_PIN 16
 
 const String bluetoothName = "WirelessMotionSensor";
 
@@ -31,8 +33,8 @@ void receiveBT(BluetoothSerial& SerialBT, void* data, size_t dataSize);
 void sendStruct(BluetoothSerial &SerialBT, const char id, const void *data, size_t dataSize);
 void receiveStruct(BluetoothSerial &SerialBT);
 void bluetoothTask(void* pvParameters);
+void unpairBT(BluetoothSerial &SerialBT);
 extern TaskHandle_t bluetoothTaskHandle;
 extern BluetoothSerial SerialBT;
-extern BNO055Data remoteBnoData;
 
 #endif // BLUETOOTH_H

@@ -1,10 +1,8 @@
 #include "bluetooth.h"
-#include "modes.h"
 
 BluetoothSerial SerialBT;
 TaskHandle_t bluetoothTaskHandle = NULL;
 BluetoothConnectionState btState = UNPAIRED;
-BNO055Data remoteBnoData;
 
 // Send data with identifier
 void sendStruct(BluetoothSerial &SerialBT, const char id, const void *data, size_t dataSize)
@@ -13,6 +11,7 @@ void sendStruct(BluetoothSerial &SerialBT, const char id, const void *data, size
     buffer[0] = id;
     memcpy(buffer + 1, data, dataSize);
     SerialBT.write(buffer, sizeof(buffer));
+    digitalWrite(BT_LED_PIN, !digitalRead(BT_LED_PIN));
 }
 
 // Receive data and parse based on identifier
@@ -47,38 +46,52 @@ void receiveStruct(BluetoothSerial &SerialBT)
         // Unknown identifier, discard the message
         break;
     }
+    digitalWrite(BT_LED_PIN, !digitalRead(BT_LED_PIN));
 }
 
 void sendBT(BluetoothSerial &SerialBT, const void *data, size_t dataSize)
 {
     SerialBT.write((const uint8_t *)data, dataSize);
+    digitalWrite(BT_LED_PIN, !digitalRead(BT_LED_PIN));
 }
 
 void receiveBT(BluetoothSerial &SerialBT, void *data, size_t dataSize)
 {
     SerialBT.readBytes((char *)data, dataSize);
     SerialBT.flush(); // flush any remaining or qued data
+    digitalWrite(BT_LED_PIN, !digitalRead(BT_LED_PIN));
+}
+
+void unpairBT(BluetoothSerial &SerialBT)
+{
+    SerialBT.disconnect();
+    SerialBT.flush();
+    SerialBT.end();
+    SerialBT.begin(bluetoothName, SLAVE); // Change bluetooth mode to slave
+    btState = UNPAIRED;
+    currentBluetoothMode = MODE_DISCONNECTED;
+    digitalWrite(BT_LED_PIN, LOW);
 }
 
 void bluetoothTask(void *pvParameters)
 {
     BluetoothSerial SerialBT = (BluetoothSerial &)pvParameters;
-
+    pinMode(BT_LED_PIN, OUTPUT);
     for (;;)
     {
         if (currentBluetoothMode == MODE_DISCONNECT)
         {
             Serial.println("Disconnecting!");
-            SerialBT.disconnect();
-            SerialBT.end();
-            SerialBT.begin(bluetoothName, SLAVE); // Change bluetooth mode to slave
-            btState = SLAVE;
-            currentBluetoothMode = MODE_DISCONNECTED;
+            unpairBT(SerialBT);
         }
         else if (SerialBT.connected())
         {
             if (btState == SLAVE)
             {
+                if (currentBluetoothMode != MODE_RECEIVER)
+                {
+                    currentBluetoothMode = MODE_RECEIVER;
+                }
                 LinacQuatData dataToSend = {localBnoData.linearAccel, localBnoData.orientation};
                 sendStruct(SerialBT, LinacQuatData_ID, &dataToSend, sizeof(LinacQuatData));
             }
@@ -112,11 +125,7 @@ void bluetoothTask(void *pvParameters)
                     else
                     {
                         Serial.println("Couldn't connect!");
-                        SerialBT.disconnect();
-                        SerialBT.end();
-                        SerialBT.begin(bluetoothName, SLAVE); // Change bluetooth mode to slave
-                        btState = UNPAIRED;
-                        currentBluetoothMode = MODE_DISCONNECTED;
+                        unpairBT(SerialBT);
                     }
                 }
                 Serial.printf("Connecting as the master, make sure a \"%s\" device is on!\n", bluetoothName.c_str());
@@ -125,12 +134,7 @@ void bluetoothTask(void *pvParameters)
             else if (currentBluetoothMode != MODE_DISCONNECTED)
             {
                 Serial.println("Connection lost!");
-                SerialBT.disconnect();
-                // Change bluetooth mode to slave
-                SerialBT.end();
-                SerialBT.begin(bluetoothName, SLAVE);
-                btState = SLAVE;
-                currentBluetoothMode = MODE_DISCONNECTED;
+                unpairBT(SerialBT);
             }
         }
         vTaskDelay(100 / portTICK_PERIOD_MS); // Adjust delay as needed

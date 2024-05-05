@@ -2,7 +2,6 @@
 
 TaskHandle_t sensorTaskHandle = NULL;
 Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28);
-BNO055Data localBnoData;
 
 void readSensor();
 

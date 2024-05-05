@@ -123,4 +123,6 @@ void drawLinacQuat(Adafruit_SH1106G &display, uint8_t x, uint8_t y, LinacQuatDat
   display.println(data.orientation.y(), 4);
   display.print("qZ: ");
   display.println(data.orientation.z(), 4);
+  display.print("BT-Mode: ");
+  display.println(currentBluetoothMode, 4);
 }
