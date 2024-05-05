@@ -19,6 +19,7 @@ extern volatile OperationMode currentOperationMode;
 
 enum BluetoothMode {
     MODE_DISCONNECTED,
+    MODE_DISCONNECT,
     MODE_CONNECT,
     MODE_SENDER,
     MODE_RECEIVER,

@@ -1,10 +1,57 @@
 #include <rendering.h>
 
-void drawRotatedObj(Adafruit_SH1106G& display, Model model, float objSize, float objOffset_x, float objOffset_y, imu::Quaternion quat) {
+// 3D Models
+Vertex cube_vertices[] = {{-1, -1, -1}, {1, -1, -1}, {1, 1, -1}, {-1, 1, -1}, {-1, -1, 1}, {1, -1, 1}, {1, 1, 1}, {-1, 1, 1}};
+Index cube_indices[] = {{0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4}, {0, 4}, {1, 5}, {2, 6}, {3, 7}};
+Vertex device_vertices[] = {{-3.5, 2, 1}, {3.5, 2, 1}, {3.5, -2, 1}, {-3.5, -2, 1}, {-3.5, 2, -1}, {3.5, 2, -1}, {3.5, -2, -1}, {-3.5, -2, -1}, {1.5, 1, -1}, {-1.5, 1, -1}, {-1.5, -1, -1}, {1.5, -1, -1}};
+Index device_indices[] = {{0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4}, {0, 4}, {1, 5}, {2, 6}, {3, 7}, {8, 9}, {9, 10}, {10, 11}, {11, 8}};
 
-  float cameraDistance = 100;  // controls perspective projection amount
+Model cubeModel;
+Model deviceModel;
 
-  for (int i = 0; i < model.numIndices; i++) {
+Adafruit_SH1106G display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+
+TaskHandle_t renderTaskHandle = NULL;
+
+void renderTask(void *pvParameters)
+{
+  if (!display.begin(0x3C, true))
+  {
+    Serial.println(F("SH110X allocation failed"));
+    for (;;)
+      ;
+  }
+
+  display.clearDisplay();
+  display.setTextSize(1);             // Set text size to normal.
+  display.setTextColor(SH110X_WHITE); // Set color to white.
+
+  cubeModel = createModel(cube_vertices, cube_indices, sizeof(cube_indices) / sizeof(cube_indices[0]));
+  deviceModel = createModel(device_vertices, device_indices, sizeof(device_indices) / sizeof(device_indices[0]));
+
+  for (;;)
+  {
+    display.clearDisplay();
+    LinacQuatData renderData = {localBnoData.linearAccel, localBnoData.orientation};
+    if(currentBluetoothMode == MODE_RECEIVER){
+      renderData.linearAccel = remoteBnoData.linearAccel;
+      renderData.orientation = remoteBnoData.orientation;
+    }
+    drawLinacQuat(display, 0, 0, renderData);
+    imu::Quaternion cubeAdjustedQuat = {renderData.orientation.w(), -renderData.orientation.x(), renderData.orientation.y(), renderData.orientation.z()};
+    drawRotatedObj(display, cubeModel, 17, SCREEN_WIDTH / 4 * 3, SCREEN_HEIGHT / 2, cubeAdjustedQuat);
+    display.display();
+    delay(10);
+  }
+}
+
+void drawRotatedObj(Adafruit_SH1106G &display, Model model, float objSize, float objOffset_x, float objOffset_y, imu::Quaternion quat)
+{
+
+  float cameraDistance = 100; // controls perspective projection amount
+
+  for (int i = 0; i < model.numIndices; i++)
+  {
     Index index = model.indices[i];
     Vertex vertex1 = model.vertices[index.v1];
     Vertex vertex2 = model.vertices[index.v2];
@@ -35,9 +82,10 @@ void drawRotatedObj(Adafruit_SH1106G& display, Model model, float objSize, float
   }
 }
 
-void rotatePoint(float& x, float& y, float& z, imu::Quaternion quat) {
+void rotatePoint(float &x, float &y, float &z, imu::Quaternion quat)
+{
   // Convert the point to a quaternion
-  imu::Quaternion p = { 0, x, y, z };
+  imu::Quaternion p = {0, x, y, z};
 
   // Multiply the rotation imu::Quaternion by the point imu::Quaternion (q * p * qConj)
   imu::Quaternion finalResult = quat * p * quat.conjugate();
@@ -49,7 +97,8 @@ void rotatePoint(float& x, float& y, float& z, imu::Quaternion quat) {
 }
 
 // Function to create a model
-Model createModel(Vertex* vertices, Index* indices, uint8_t numIndices) {
+Model createModel(Vertex *vertices, Index *indices, uint8_t numIndices)
+{
   Model model;
   model.vertices = vertices;
   model.indices = indices;
@@ -57,7 +106,8 @@ Model createModel(Vertex* vertices, Index* indices, uint8_t numIndices) {
   return model;
 }
 
-void drawLinacQuat(Adafruit_SH1106G& display, uint8_t x, uint8_t y, LinacQuatData data) {
+void drawLinacQuat(Adafruit_SH1106G &display, uint8_t x, uint8_t y, LinacQuatData data)
+{
   display.setCursor(x, y);
   display.print("X: ");
   display.println(data.linearAccel.x(), 4);

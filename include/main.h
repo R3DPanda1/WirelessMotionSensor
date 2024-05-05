@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 #include <rendering.h>
-#include <bno055.h>
+#include <sensor.h>
 #include <bluetooth.h>
 #include <modes.h>
 #include <Wire.h>
@@ -19,9 +19,5 @@
 #define LIPO_MON_PIN 33
 #define BT_LED_PIN 16
 #define BNO_INT_PIN 17
-
-BluetoothSerial SerialBT;
-Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28);
-Adafruit_SH1106G display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 #endif // MAIN_H

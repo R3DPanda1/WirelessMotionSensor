@@ -4,7 +4,9 @@
 #include <Arduino.h>
 #include <Adafruit_SH110X.h>
 #include <Adafruit_GFX.h>
-#include <bno055.h>
+#include <sensor.h>
+#include <modes.h>
+#include <bluetooth.h>
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 
@@ -29,5 +31,10 @@ void drawRotatedObj(Adafruit_SH1106G& display, Model model, float objSize, float
 void rotatePoint(float& x, float& y, float& z, imu::Quaternion quat);
 void drawLinacQuat(Adafruit_SH1106G& display, uint8_t x, uint8_t y, LinacQuatData data);
 Model createModel(Vertex* vertices, Index* indices, uint8_t numIndices);
+
+void renderTask(void* pvParameters);
+extern TaskHandle_t renderTaskHandle;
+
+extern Adafruit_SH1106G display;
 
 #endif // RENDERING_H
