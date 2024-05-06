@@ -13,13 +13,14 @@ Adafruit_SH1106G display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 TaskHandle_t renderTaskHandle = NULL;
 
+QueueHandle_t displayNotificationQueue;
+
 void renderTask(void *pvParameters)
 {
   if (!display.begin(0x3C, true))
   {
     Serial.println(F("SH110X allocation failed"));
-    for (;;)
-      ;
+    vTaskDelete(NULL);
   }
 
   display.clearDisplay();
@@ -29,19 +30,41 @@ void renderTask(void *pvParameters)
   cubeModel = createModel(cube_vertices, cube_indices, sizeof(cube_indices) / sizeof(cube_indices[0]));
   deviceModel = createModel(device_vertices, device_indices, sizeof(device_indices) / sizeof(device_indices[0]));
 
+  displayNotificationQueue = xQueueCreate(3, sizeof(char *));
+  char *notification;
+
   for (;;)
   {
-    display.clearDisplay();
-    LinacQuatData renderData = {localBnoData.linearAccel, localBnoData.orientation};
-    if(currentBluetoothMode == MODE_RECEIVER){
-      renderData.linearAccel = remoteBnoData.linearAccel;
-      renderData.orientation = remoteBnoData.orientation;
+    if (uxQueueMessagesWaiting(displayNotificationQueue) > 0)
+    {
+      if (xQueueReceive(displayNotificationQueue, &notification, portMAX_DELAY) == pdTRUE)
+      {
+        display.clearDisplay();
+        display.setCursor(0, 0);
+        display.println(notification);
+        display.display();
+        free(notification);             // Free the memory after displaying
+        vTaskDelay(pdMS_TO_TICKS(500)); // Display each message for 500 ms
+      }
     }
-    drawLinacQuat(display, 0, 0, renderData);
-    imu::Quaternion cubeAdjustedQuat = {renderData.orientation.w(), -renderData.orientation.x(), renderData.orientation.y(), renderData.orientation.z()};
-    drawRotatedObj(display, cubeModel, 17, SCREEN_WIDTH / 4 * 3, SCREEN_HEIGHT / 2, cubeAdjustedQuat);
-    display.display();
-    delay(10);
+    else
+    {
+      display.clearDisplay();
+      LinacQuatData renderData = {localBnoData.linearAccel, localBnoData.orientation};
+      // drawLinacQuat(display, 0, 0, renderData);
+      imu::Quaternion cubeAdjustedQuat = {renderData.orientation.w(), -renderData.orientation.x(), renderData.orientation.y(), renderData.orientation.z()};
+      drawRotatedObj(display, cubeModel, 17, SCREEN_WIDTH / 4 * 1, SCREEN_HEIGHT / 2, cubeAdjustedQuat);
+      if (currentBluetoothMode == MODE_CONNECTED)
+      {
+        renderData.linearAccel = remoteBnoData.linearAccel;
+        renderData.orientation = remoteBnoData.orientation;
+        // drawLinacQuat(display, 0, 0, renderData);
+        cubeAdjustedQuat = {renderData.orientation.w(), -renderData.orientation.x(), renderData.orientation.y(), renderData.orientation.z()};
+        drawRotatedObj(display, cubeModel, 17, SCREEN_WIDTH / 4 * 3, SCREEN_HEIGHT / 2, cubeAdjustedQuat);
+      }
+      display.display();
+      delay(10);
+    }
   }
 }
 

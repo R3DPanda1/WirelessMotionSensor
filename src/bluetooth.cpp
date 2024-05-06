@@ -1,7 +1,8 @@
 #include "bluetooth.h"
 
 BluetoothSerial SerialBT;
-TaskHandle_t bluetoothTaskHandle = NULL;
+TaskHandle_t bluetoothRXTaskHandle = NULL;
+TaskHandle_t bluetoothTXTaskHandle = NULL;
 BluetoothConnectionState btState = UNPAIRED;
 
 // Send data with identifier
@@ -11,16 +12,21 @@ void sendStruct(BluetoothSerial &SerialBT, const char id, const void *data, size
     buffer[0] = id;
     memcpy(buffer + 1, data, dataSize);
     SerialBT.write(buffer, sizeof(buffer));
-    digitalWrite(BT_LED_PIN, !digitalRead(BT_LED_PIN));
+    // Serial.print("Sent:");
+    // Serial.write(buffer, sizeof(buffer));
+    // Serial.println();
+    digitalWrite(BT_LED_PIN, TOGGLE_500MS_STATE);
 }
 
 // Receive data and parse based on identifier
 void receiveStruct(BluetoothSerial &SerialBT)
 {
+
     // Read the identifier character
     char id = SerialBT.read();
-    Serial.write(id);
-    Serial.println();
+    // Serial.print("Received:");
+    // Serial.write(id);
+    // Serial.println();
 
     // Process data based on the identifier
     switch (id)
@@ -46,34 +52,53 @@ void receiveStruct(BluetoothSerial &SerialBT)
         // Unknown identifier, discard the message
         break;
     }
-    digitalWrite(BT_LED_PIN, !digitalRead(BT_LED_PIN));
+    // SerialBT.flush(); // flush any remaining or qued data
+    digitalWrite(BT_LED_PIN, TOGGLE_500MS_STATE);
 }
 
 void sendBT(BluetoothSerial &SerialBT, const void *data, size_t dataSize)
 {
     SerialBT.write((const uint8_t *)data, dataSize);
-    digitalWrite(BT_LED_PIN, !digitalRead(BT_LED_PIN));
+    digitalWrite(BT_LED_PIN, TOGGLE_500MS_STATE);
 }
 
 void receiveBT(BluetoothSerial &SerialBT, void *data, size_t dataSize)
 {
     SerialBT.readBytes((char *)data, dataSize);
-    SerialBT.flush(); // flush any remaining or qued data
-    digitalWrite(BT_LED_PIN, !digitalRead(BT_LED_PIN));
+    // SerialBT.flush(); // flush any remaining or qued data
+    digitalWrite(BT_LED_PIN, TOGGLE_500MS_STATE);
 }
 
 void unpairBT(BluetoothSerial &SerialBT)
 {
     SerialBT.disconnect();
-    SerialBT.flush();
+    // SerialBT.flush();
     SerialBT.end();
     SerialBT.begin(bluetoothName, SLAVE); // Change bluetooth mode to slave
     btState = UNPAIRED;
     currentBluetoothMode = MODE_DISCONNECTED;
     digitalWrite(BT_LED_PIN, LOW);
+    displayNotification("Disconnected!");
 }
 
-void bluetoothTask(void *pvParameters)
+void bluetoothRXTask(void *pvParameters)
+{
+    BluetoothSerial SerialBT = (BluetoothSerial &)pvParameters;
+    pinMode(BT_LED_PIN, OUTPUT);
+    for (;;)
+    {
+        if (SerialBT.connected())
+        {
+            if (SerialBT.available())
+            {
+                receiveStruct(SerialBT);
+            }
+        }
+        vTaskDelay(1 / portTICK_PERIOD_MS); // receiving should be very quick
+    }
+}
+
+void bluetoothTXTask(void *pvParameters)
 {
     BluetoothSerial SerialBT = (BluetoothSerial &)pvParameters;
     pinMode(BT_LED_PIN, OUTPUT);
@@ -86,19 +111,13 @@ void bluetoothTask(void *pvParameters)
         }
         else if (SerialBT.connected())
         {
-            if (btState == SLAVE)
+
+            if (currentBluetoothMode != MODE_CONNECTED)
             {
-                if (currentBluetoothMode != MODE_RECEIVER)
-                {
-                    currentBluetoothMode = MODE_RECEIVER;
-                }
-                LinacQuatData dataToSend = {localBnoData.linearAccel, localBnoData.orientation};
-                sendStruct(SerialBT, LinacQuatData_ID, &dataToSend, sizeof(LinacQuatData));
+                currentBluetoothMode = MODE_CONNECTED;
             }
-            if (SerialBT.available())
-            {
-                receiveStruct(SerialBT);
-            }
+            LinacQuatData dataToSend = {localBnoData.linearAccel, localBnoData.orientation};
+            sendStruct(SerialBT, LinacQuatData_ID, &dataToSend, sizeof(LinacQuatData));
         }
         else
         {
@@ -112,7 +131,7 @@ void bluetoothTask(void *pvParameters)
                 if (SerialBT.connect(bluetoothName))
                 {
                     Serial.println("Connected Successfully!");
-                    currentBluetoothMode = MODE_RECEIVER;
+                    currentBluetoothMode = MODE_CONNECTED;
                 }
                 else
                 {
@@ -120,7 +139,7 @@ void bluetoothTask(void *pvParameters)
                     if (SerialBT.connected())
                     {
                         Serial.println("Connected Successfully!");
-                        currentBluetoothMode = MODE_RECEIVER;
+                        currentBluetoothMode = MODE_CONNECTED;
                     }
                     else
                     {
@@ -137,6 +156,6 @@ void bluetoothTask(void *pvParameters)
                 unpairBT(SerialBT);
             }
         }
-        vTaskDelay(100 / portTICK_PERIOD_MS); // Adjust delay as needed
+        vTaskDelay(30 / portTICK_PERIOD_MS);
     }
 }

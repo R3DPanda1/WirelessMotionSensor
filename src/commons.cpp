@@ -6,3 +6,12 @@ volatile RecordingMode currentRecordingMode = NONE;
 
 BNO055Data localBnoData;
 BNO055Data remoteBnoData;
+
+void displayNotification(const char* message) {
+  if (uxQueueSpacesAvailable(displayNotificationQueue) > 0) {  // Check if there's space in the queue
+    char* msg = strdup(message);  // Duplicate the message to send
+    if (xQueueSend(displayNotificationQueue, &msg, 0) != pdPASS) {
+      free(msg);  // Prevent memory leak if queue send fails
+    }
+  }
+}

@@ -9,8 +9,6 @@
 #include <Wire.h>
 //#include <utility/imumaths.h>
 //#include <math.h>
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
 #include "commons.h"
 
 #if !defined(CONFIG_BT_SPP_ENABLED)

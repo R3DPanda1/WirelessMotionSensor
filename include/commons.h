@@ -9,6 +9,12 @@
  */
 
 #include "utility/imumaths.h"
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <freertos/queue.h>
+
+extern QueueHandle_t displayNotificationQueue;
+void displayNotification(const char* message);
 
 const char LinacQuatData_ID = 'M';
 struct LinacQuatData {
@@ -40,8 +46,7 @@ enum BluetoothMode {
     MODE_DISCONNECTED,
     MODE_DISCONNECT,
     MODE_CONNECT,
-    MODE_SENDER,
-    MODE_RECEIVER,
+    MODE_CONNECTED,
     MODE_CLK_SYNC
 };
 extern volatile BluetoothMode currentBluetoothMode;

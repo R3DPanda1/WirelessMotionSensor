@@ -5,6 +5,8 @@
 #include "commons.h"
 
 #define BT_LED_PIN 16
+// used to indicate BT communication without toggling too fast
+#define TOGGLE_500MS_STATE ((millis() % 200 < 100) ? HIGH : LOW)
 
 const String bluetoothName = "WirelessMotionSensor";
 
@@ -32,9 +34,11 @@ void sendBT(BluetoothSerial& SerialBT, const void* data, size_t dataSize);
 void receiveBT(BluetoothSerial& SerialBT, void* data, size_t dataSize);
 void sendStruct(BluetoothSerial &SerialBT, const char id, const void *data, size_t dataSize);
 void receiveStruct(BluetoothSerial &SerialBT);
-void bluetoothTask(void* pvParameters);
+void bluetoothRXTask(void* pvParameters);
+void bluetoothTXTask(void* pvParameters);
 void unpairBT(BluetoothSerial &SerialBT);
-extern TaskHandle_t bluetoothTaskHandle;
+extern TaskHandle_t bluetoothRXTaskHandle;
+extern TaskHandle_t bluetoothTXTaskHandle;
 extern BluetoothSerial SerialBT;
 
 #endif // BLUETOOTH_H

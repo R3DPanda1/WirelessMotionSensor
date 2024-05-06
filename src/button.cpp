@@ -42,6 +42,7 @@ void buttonTask(void *pvParameters)
                 lastDebounceTimes[i] = millis();
 
                 buttonPressed = i + 1;
+                vTaskDelay(200 / portTICK_PERIOD_MS);
             }
 
             lastButtonStates[i] = buttonState;
@@ -80,7 +81,7 @@ void buttonTask(void *pvParameters)
             }
             break;
         case CLK_SYNC_SW:
-            if (currentBluetoothMode == MODE_RECEIVER)
+            if (currentBluetoothMode == MODE_CONNECTED)
             {
                 currentBluetoothMode = MODE_CLK_SYNC;
             }
@@ -92,6 +93,6 @@ void buttonTask(void *pvParameters)
         buttonPressed = 0;
 
         // Yield to other tasks
-        vTaskDelay(200 / portTICK_PERIOD_MS);
+        vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 }
