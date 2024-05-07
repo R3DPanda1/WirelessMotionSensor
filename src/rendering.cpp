@@ -83,7 +83,7 @@ void renderTask(void *pvParameters)
 int scaleLogarithmically(float val, float sensitivity)
 {
   if (val == 0)
-    return 0;                                              // Logarithm of zero is undefined, so handle this case separately.
+    return 0;                                            // Logarithm of zero is undefined, so handle this case separately.
   float logValue = log(abs(val) + 1) * sensitivity;      // Add 1 to avoid log(0), multiply by sensitivity to scale the result.
   return int((val > 0 ? 1 : -1) * min(logValue, 31.0f)); // Apply sign, constrain to -31 to 31.
 }
@@ -95,21 +95,36 @@ void drawAccelGraph(Adafruit_SH1106G &display, imu::Vector<3> accel)
   int y_scale = 4;
 
   // Shift all data left by one position
-  memmove(xVals, xVals + 1, graph_x_size-1);
-  memmove(yVals, yVals + 1, graph_x_size-1);
-  memmove(zVals, zVals + 1, graph_x_size-1);
+  memmove(xVals, xVals + 1, graph_x_size - 1);
+  memmove(yVals, yVals + 1, graph_x_size - 1);
+  memmove(zVals, zVals + 1, graph_x_size - 1);
 
   // Add new scaled and shifted data to the end
-  xVals[graph_x_size-1] = constrain(scaleLogarithmically(accel.x(), y_scale), -10, 10);
-  yVals[graph_x_size-1] = constrain(scaleLogarithmically(accel.y(), y_scale), -10, 10);
-  zVals[graph_x_size-1] = constrain(scaleLogarithmically(accel.z(), y_scale), -10, 10);
+  xVals[graph_x_size - 1] = constrain(scaleLogarithmically(accel.x(), y_scale), -10, 10);
+  yVals[graph_x_size - 1] = constrain(scaleLogarithmically(accel.y(), y_scale), -10, 10);
+  zVals[graph_x_size - 1] = constrain(scaleLogarithmically(accel.z(), y_scale), -10, 10);
+
+  display.drawBitmap(SCREEN_WIDTH - graph_x_size - 8, 1, spriteBitmap, 8, 60, SH110X_WHITE);
+
+  int accel_nums[3] = {
+      (int)(accel.x() * 10),
+      (int)(accel.y() * 10),
+      (int)(accel.z() * 10)};
+
+  int len;
+  for (int i = 0; i < 3; i++)
+  {
+    len = snprintf(nullptr, 0, "%d", accel_nums[i]);
+    display.setCursor(SCREEN_WIDTH - graph_x_size - 3 - len * 6, SCREEN_HEIGHT / 6 * (2 * i + 1) + 2);
+    display.print(accel_nums[i]);
+  }
 
   for (int i = 0; i < graph_x_size; i++)
   {
     // Drawing lines to make graphs
-    display.drawFastVLine(SCREEN_WIDTH - 1 - i, SCREEN_HEIGHT / 6 * 1, xVals[i], SH110X_WHITE);
-    display.drawFastVLine(SCREEN_WIDTH - 1 - i, SCREEN_HEIGHT / 6 * 3, yVals[i], SH110X_WHITE);
-    display.drawFastVLine(SCREEN_WIDTH - 1 - i, SCREEN_HEIGHT / 6 * 5, zVals[i], SH110X_WHITE);
+    display.drawFastVLine(SCREEN_WIDTH - 2 - i, SCREEN_HEIGHT / 6 * 1, xVals[i], SH110X_WHITE);
+    display.drawFastVLine(SCREEN_WIDTH - 2 - i, SCREEN_HEIGHT / 6 * 3, yVals[i], SH110X_WHITE);
+    display.drawFastVLine(SCREEN_WIDTH - 2 - i, SCREEN_HEIGHT / 6 * 5, zVals[i], SH110X_WHITE);
   }
 }
 

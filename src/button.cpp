@@ -76,9 +76,11 @@ void buttonTask(void *pvParameters)
             {
             case MODE_LINACQUAD:
                 currentOperationMode = MODE_NONE;
+                displayNotification("None");
                 break;
             case MODE_NONE:
                 currentOperationMode = MODE_LINACQUAD;
+                displayNotification("L-Accel&Orientation");
                 break;
             }
             break;
