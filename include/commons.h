@@ -22,6 +22,11 @@ struct LinacQuatData {
   imu::Quaternion orientation;
 };
 
+const char NoneData_ID = 'N';
+struct NoneData {
+    int test;
+};
+
 struct BNO055Data {
     imu::Vector<3> accelerometer;  // x, y, z values in m/s^2
     imu::Vector<3> magnetometer;   // x, y, z values in microteslas

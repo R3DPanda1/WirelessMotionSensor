@@ -39,32 +39,28 @@ void renderTask(void *pvParameters)
 
   for (;;)
   {
-    if (uxQueueMessagesWaiting(displayNotificationQueue) > 0 && millis() > drawNotificationUntil)
-    {
-      if (xQueueReceive(displayNotificationQueue, &notification, portMAX_DELAY) == pdTRUE)
-      {
-        // Calculate the width and height of the notification text
-        display.getTextBounds(notification, 0, 0, &x1, &y1, &w, &h);
-
-        // Display the notification
-        display.println(notification);
-        // display.display();
-        drawNotificationUntil = millis() + 1000;
-      }
-    }
-
     display.clearDisplay();
 
-    // drawLinacQuat(display, 0, 0, renderData);
-    imu::Quaternion cubeAdjustedQuat = {localBnoData.orientation.w(), -localBnoData.orientation.x(), localBnoData.orientation.y(), localBnoData.orientation.z()};
-    drawRotatedObj(display, cubeModel, 3.5, SCREEN_WIDTH / 4 * 1, SCREEN_HEIGHT / 2, cubeAdjustedQuat);
-    drawAccelGraph(display, localBnoData.linearAccel);
+    BNO055Data renderedBnoData = localBnoData;
     if (currentBluetoothMode == MODE_CONNECTED)
     {
-      // drawLinacQuat(display, 0, 0, renderData);
-      cubeAdjustedQuat = {remoteBnoData.orientation.w(), -remoteBnoData.orientation.x(), remoteBnoData.orientation.y(), remoteBnoData.orientation.z()};
-      drawRotatedObj(display, cubeModel, 3.5, SCREEN_WIDTH / 4 * 3, SCREEN_HEIGHT / 2, cubeAdjustedQuat);
+      renderedBnoData = remoteBnoData;
+      display.drawBitmap(0, 0, btSprite, 8, sizeof(btSprite), SH110X_INVERSE);
     }
+
+    imu::Quaternion cubeAdjustedQuat;
+    switch (currentOperationMode)
+    {
+    case MODE_LINACQUAD:
+      cubeAdjustedQuat = {renderedBnoData.orientation.w(), -renderedBnoData.orientation.x(), renderedBnoData.orientation.y(), renderedBnoData.orientation.z()};
+      drawRotatedObj(display, cubeModel, 3.5, SCREEN_WIDTH / 4 * 1, SCREEN_HEIGHT / 2, cubeAdjustedQuat);
+      drawAccelGraph(display, renderedBnoData.linearAccel);
+      break;
+    case MODE_NONE:
+
+      break;
+    }
+
     if (millis() < drawNotificationUntil)
     {
       // Set cursor position to horizontally center the text
@@ -75,7 +71,20 @@ void renderTask(void *pvParameters)
 
       display.print(notification);
     }
+
     display.display();
+    if (uxQueueMessagesWaiting(displayNotificationQueue) > 0 && millis() > drawNotificationUntil)
+    {
+      if (xQueueReceive(displayNotificationQueue, &notification, portMAX_DELAY) == pdTRUE)
+      {
+        // Calculate the width and height of the notification text
+        display.getTextBounds(notification, 0, 0, &x1, &y1, &w, &h);
+
+        // Display the notification
+        display.println(notification);
+        drawNotificationUntil = millis() + 1000;
+      }
+    }
     delay(10);
   }
 }
@@ -83,9 +92,9 @@ void renderTask(void *pvParameters)
 int scaleLogarithmically(float val, float sensitivity)
 {
   if (val == 0)
-    return 0;                                            // Logarithm of zero is undefined, so handle this case separately.
-  float logValue = log(abs(val) + 1) * sensitivity;      // Add 1 to avoid log(0), multiply by sensitivity to scale the result.
-  return int((val > 0 ? 1 : -1) * min(logValue, 31.0f)); // Apply sign, constrain to -31 to 31.
+    return 0;                                       // Logarithm of zero is undefined
+  float logValue = log(abs(val) + 1) * sensitivity; // Add 1 to avoid log(0)
+  return (int)val;
 }
 
 void drawAccelGraph(Adafruit_SH1106G &display, imu::Vector<3> accel)
@@ -104,7 +113,7 @@ void drawAccelGraph(Adafruit_SH1106G &display, imu::Vector<3> accel)
   yVals[graph_x_size - 1] = constrain(scaleLogarithmically(accel.y(), y_scale), -10, 10);
   zVals[graph_x_size - 1] = constrain(scaleLogarithmically(accel.z(), y_scale), -10, 10);
 
-  display.drawBitmap(SCREEN_WIDTH - graph_x_size - 8, 1, spriteBitmap, 8, 60, SH110X_WHITE);
+  display.drawBitmap(SCREEN_WIDTH - graph_x_size - 8, 1, triAxisSprite, 8, sizeof(triAxisSprite), SH110X_WHITE);
 
   int accel_nums[3] = {
       (int)(accel.x() * 10),
@@ -187,25 +196,4 @@ Model createModel(Vertex *vertices, Index *indices, uint8_t numIndices)
   model.indices = indices;
   model.numIndices = numIndices;
   return model;
-}
-
-void drawLinacQuat(Adafruit_SH1106G &display, uint8_t x, uint8_t y, LinacQuatData data)
-{
-  display.setCursor(x, y);
-  display.print("X: ");
-  display.println(data.linearAccel.x(), 4);
-  display.print("Y: ");
-  display.println(data.linearAccel.y(), 4);
-  display.print("Z: ");
-  display.println(data.linearAccel.z(), 4);
-  display.print("qW: ");
-  display.println(data.orientation.w(), 4);
-  display.print("qX: ");
-  display.println(data.orientation.x(), 4);
-  display.print("qY: ");
-  display.println(data.orientation.y(), 4);
-  display.print("qZ: ");
-  display.println(data.orientation.z(), 4);
-  display.print("BT-Mode: ");
-  display.println(currentBluetoothMode, 4);
 }

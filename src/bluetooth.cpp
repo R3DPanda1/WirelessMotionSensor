@@ -22,25 +22,35 @@ void receiveStruct(BluetoothSerial &SerialBT)
         SerialBT.readBytes(buffer, PACKET_SIZE);
 
         char id = buffer[0];
-        //Serial.write(id);
-        //Serial.println();
+        // Serial.write(id);
+        // Serial.println();
 
         switch (id)
         {
         case LinacQuatData_ID:
         {
+            if (currentOperationMode != MODE_LINACQUAD && btState == SLAVE)
+            {
+                currentOperationMode = MODE_LINACQUAD;
+                displayNotification("L-Accel&Orientation");
+            }
             LinacQuatData receivedData;
             memcpy(&receivedData, buffer + 1, sizeof(LinacQuatData));
             remoteBnoData.linearAccel = receivedData.linearAccel;
             remoteBnoData.orientation = receivedData.orientation;
             break;
         }
-        case STRUCT_B_ID:
+        case NoneData_ID:
         {
-            StructB receivedDataB;
-            memcpy(&receivedDataB, buffer + 1, sizeof(StructB));
-            Serial.print("Received StructB: ");
-            Serial.println(receivedDataB.str);
+            if (currentOperationMode != MODE_NONE && btState == SLAVE)
+            {
+                currentOperationMode = MODE_NONE;
+                displayNotification("None");
+            }
+            NoneData receivedData;
+            memcpy(&receivedData, buffer + 1, sizeof(NoneData));
+            Serial.print("Test:");
+            Serial.println(receivedData.test);
             break;
         }
         default:
@@ -111,8 +121,21 @@ void bluetoothTXTask(void *pvParameters)
                 displayNotification("Connected!");
                 currentBluetoothMode = MODE_CONNECTED;
             }
-            LinacQuatData dataToSend = {localBnoData.linearAccel, localBnoData.orientation};
-            sendStruct(SerialBT, LinacQuatData_ID, &dataToSend, sizeof(LinacQuatData));
+            switch (currentOperationMode)
+            {
+            case MODE_LINACQUAD:
+            {
+                LinacQuatData dataToSend = {localBnoData.linearAccel, localBnoData.orientation};
+                sendStruct(SerialBT, LinacQuatData_ID, &dataToSend, sizeof(LinacQuatData));
+                break;
+            }
+            case MODE_NONE:
+            {
+                NoneData dataToSend = {0};
+                sendStruct(SerialBT, NoneData_ID, &dataToSend, sizeof(NoneData));
+                break;
+            }
+            }
         }
         else
         {
@@ -125,7 +148,6 @@ void bluetoothTXTask(void *pvParameters)
                 // Try to connect to a device
                 if (SerialBT.connect(bluetoothName))
                 {
-                    Serial.println("Connected Successfully!");
                     displayNotification("Connected!");
                     currentBluetoothMode = MODE_CONNECTED;
                 }
@@ -134,13 +156,11 @@ void bluetoothTXTask(void *pvParameters)
                     delay(1000);
                     if (SerialBT.connected())
                     {
-                        Serial.println("Connected Successfully!");
                         displayNotification("Connected!");
                         currentBluetoothMode = MODE_CONNECTED;
                     }
                     else
                     {
-                        Serial.println("Couldn't connect!");
                         displayNotification("Couldn't connect!");
                         unpairBT(SerialBT);
                     }
@@ -148,7 +168,6 @@ void bluetoothTXTask(void *pvParameters)
             }
             else if (currentBluetoothMode != MODE_DISCONNECTED)
             {
-                Serial.println("Connection lost!");
                 displayNotification("Connection lost!");
                 unpairBT(SerialBT);
             }

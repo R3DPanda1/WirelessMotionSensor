@@ -10,19 +10,6 @@
 
 const String bluetoothName = "WirelessMotionSensor";
 
-// Define identifier characters for different types of messages
-const char STRUCT_B_ID = 'B';
-
-// Define the structures you want to send
-struct StructA {
-  int value1;
-  float value2;
-};
-
-struct StructB {
-  char str[20];
-};
-
 enum BluetoothConnectionState {
     UNPAIRED,
     MASTER = 1,
