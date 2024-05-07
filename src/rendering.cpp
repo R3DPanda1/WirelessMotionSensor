@@ -1,8 +1,8 @@
 #include <rendering.h>
 
 // 3D Models
-Vertex cube_vertices[] = {{-1, -1, -1}, {1, -1, -1}, {1, 1, -1}, {-1, 1, -1}, {-1, -1, 1}, {1, -1, 1}, {1, 1, 1}, {-1, 1, 1}};
-Index cube_indices[] = {{0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4}, {0, 4}, {1, 5}, {2, 6}, {3, 7}};
+Vertex cube_vertices[] = {{-5, -5, -5}, {5, -5, -5}, {5, 5, -5}, {-5, 5, -5}, {-5, -5, 5}, {5, -5, 5}, {5, 5, 5}, {-5, 5, 5}, {0, 0, 3}, {0, 0, -3}, {1, 1, -1}, {-1, 1, -1}, {1, -1, -1}, {-1, -1, -1}};
+Index cube_indices[] = {{0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4}, {0, 4}, {1, 5}, {2, 6}, {3, 7}, {8, 9}, {9, 10}, {9, 11}, {9, 12}, {9, 13}};
 Vertex device_vertices[] = {{-3.5, 2, 1}, {3.5, 2, 1}, {3.5, -2, 1}, {-3.5, -2, 1}, {-3.5, 2, -1}, {3.5, 2, -1}, {3.5, -2, -1}, {-3.5, -2, -1}, {1.5, 1, -1}, {-1.5, 1, -1}, {-1.5, -1, -1}, {1.5, -1, -1}};
 Index device_indices[] = {{0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4}, {0, 4}, {1, 5}, {2, 6}, {3, 7}, {8, 9}, {9, 10}, {10, 11}, {11, 8}};
 
@@ -19,7 +19,7 @@ void renderTask(void *pvParameters)
 {
   if (!display.begin(0x3C, true))
   {
-    Serial.println(F("SH110X allocation failed"));
+    Serial.println(F("SH110X initialization failed"));
     vTaskDelete(NULL);
   }
 
@@ -32,39 +32,84 @@ void renderTask(void *pvParameters)
 
   displayNotificationQueue = xQueueCreate(3, sizeof(char *));
   char *notification;
+  int16_t x1, y1;
+  uint16_t w, h;
+  const uint16_t padding = 3;
+  unsigned long drawNotificationUntil = 0;
 
   for (;;)
   {
-    if (uxQueueMessagesWaiting(displayNotificationQueue) > 0)
+    if (uxQueueMessagesWaiting(displayNotificationQueue) > 0 && millis() > drawNotificationUntil)
     {
       if (xQueueReceive(displayNotificationQueue, &notification, portMAX_DELAY) == pdTRUE)
       {
-        display.clearDisplay();
-        display.setCursor(0, 0);
+        // Calculate the width and height of the notification text
+        display.getTextBounds(notification, 0, 0, &x1, &y1, &w, &h);
+
+        // Display the notification
         display.println(notification);
-        display.display();
-        free(notification);             // Free the memory after displaying
-        vTaskDelay(pdMS_TO_TICKS(500)); // Display each message for 500 ms
+        // display.display();
+        drawNotificationUntil = millis() + 1000;
       }
     }
-    else
+
+    display.clearDisplay();
+
+    // drawLinacQuat(display, 0, 0, renderData);
+    imu::Quaternion cubeAdjustedQuat = {localBnoData.orientation.w(), -localBnoData.orientation.x(), localBnoData.orientation.y(), localBnoData.orientation.z()};
+    drawRotatedObj(display, cubeModel, 3.5, SCREEN_WIDTH / 4 * 1, SCREEN_HEIGHT / 2, cubeAdjustedQuat);
+    drawAccelGraph(display, localBnoData.linearAccel);
+    if (currentBluetoothMode == MODE_CONNECTED)
     {
-      display.clearDisplay();
-      LinacQuatData renderData = {localBnoData.linearAccel, localBnoData.orientation};
       // drawLinacQuat(display, 0, 0, renderData);
-      imu::Quaternion cubeAdjustedQuat = {renderData.orientation.w(), -renderData.orientation.x(), renderData.orientation.y(), renderData.orientation.z()};
-      drawRotatedObj(display, cubeModel, 17, SCREEN_WIDTH / 4 * 1, SCREEN_HEIGHT / 2, cubeAdjustedQuat);
-      if (currentBluetoothMode == MODE_CONNECTED)
-      {
-        renderData.linearAccel = remoteBnoData.linearAccel;
-        renderData.orientation = remoteBnoData.orientation;
-        // drawLinacQuat(display, 0, 0, renderData);
-        cubeAdjustedQuat = {renderData.orientation.w(), -renderData.orientation.x(), renderData.orientation.y(), renderData.orientation.z()};
-        drawRotatedObj(display, cubeModel, 17, SCREEN_WIDTH / 4 * 3, SCREEN_HEIGHT / 2, cubeAdjustedQuat);
-      }
-      display.display();
-      delay(10);
+      cubeAdjustedQuat = {remoteBnoData.orientation.w(), -remoteBnoData.orientation.x(), remoteBnoData.orientation.y(), remoteBnoData.orientation.z()};
+      drawRotatedObj(display, cubeModel, 3.5, SCREEN_WIDTH / 4 * 3, SCREEN_HEIGHT / 2, cubeAdjustedQuat);
     }
+    if (millis() < drawNotificationUntil)
+    {
+      // Set cursor position to horizontally center the text
+      display.setCursor((SCREEN_WIDTH - w) / 2, padding);
+      // Draw rectangle around the text
+      display.fillRect((SCREEN_WIDTH - w) / 2 - padding, 0, w + 2 * padding, h + 2 * padding, SH110X_BLACK);
+      display.drawRect((SCREEN_WIDTH - w) / 2 - padding, 0, w + 2 * padding, h + 2 * padding, SH110X_WHITE);
+
+      display.print(notification);
+    }
+    display.display();
+    delay(10);
+  }
+}
+
+int scaleLogarithmically(float val, float sensitivity)
+{
+  if (val == 0)
+    return 0;                                              // Logarithm of zero is undefined, so handle this case separately.
+  float logValue = log(abs(val) + 1) * sensitivity;      // Add 1 to avoid log(0), multiply by sensitivity to scale the result.
+  return int((val > 0 ? 1 : -1) * min(logValue, 31.0f)); // Apply sign, constrain to -31 to 31.
+}
+
+void drawAccelGraph(Adafruit_SH1106G &display, imu::Vector<3> accel)
+{
+  const int graph_x_size = 50;
+  static int8_t xVals[graph_x_size], yVals[graph_x_size], zVals[graph_x_size];
+  int y_scale = 4;
+
+  // Shift all data left by one position
+  memmove(xVals, xVals + 1, graph_x_size-1);
+  memmove(yVals, yVals + 1, graph_x_size-1);
+  memmove(zVals, zVals + 1, graph_x_size-1);
+
+  // Add new scaled and shifted data to the end
+  xVals[graph_x_size-1] = constrain(scaleLogarithmically(accel.x(), y_scale), -10, 10);
+  yVals[graph_x_size-1] = constrain(scaleLogarithmically(accel.y(), y_scale), -10, 10);
+  zVals[graph_x_size-1] = constrain(scaleLogarithmically(accel.z(), y_scale), -10, 10);
+
+  for (int i = 0; i < graph_x_size; i++)
+  {
+    // Drawing lines to make graphs
+    display.drawFastVLine(SCREEN_WIDTH - 1 - i, SCREEN_HEIGHT / 6 * 1, xVals[i], SH110X_WHITE);
+    display.drawFastVLine(SCREEN_WIDTH - 1 - i, SCREEN_HEIGHT / 6 * 3, yVals[i], SH110X_WHITE);
+    display.drawFastVLine(SCREEN_WIDTH - 1 - i, SCREEN_HEIGHT / 6 * 5, zVals[i], SH110X_WHITE);
   }
 }
 

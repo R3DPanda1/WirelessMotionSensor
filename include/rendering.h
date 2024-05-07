@@ -26,6 +26,7 @@ struct Model {
 };
 
 void drawRotatedObj(Adafruit_SH1106G& display, Model model, float objSize, float objOffset_x, float objOffset_y, imu::Quaternion quat);
+void drawAccelGraph(Adafruit_SH1106G &display, imu::Vector<3> accel);
 void rotatePoint(float& x, float& y, float& z, imu::Quaternion quat);
 void drawLinacQuat(Adafruit_SH1106G& display, uint8_t x, uint8_t y, LinacQuatData data);
 Model createModel(Vertex* vertices, Index* indices, uint8_t numIndices);

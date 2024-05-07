@@ -63,10 +63,12 @@ void buttonTask(void *pvParameters)
             if (currentBluetoothMode == MODE_DISCONNECTED)
             {
                 currentBluetoothMode = MODE_CONNECT;
+                displayNotification("Connecting...");
             }
             else if (currentBluetoothMode != MODE_CONNECT)
             {
                 currentBluetoothMode = MODE_DISCONNECT;
+                displayNotification("Disconnecting...");
             }
             break;
         case MODE_SW:
