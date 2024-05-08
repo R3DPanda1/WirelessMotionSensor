@@ -11,7 +11,7 @@ void sendStruct(BluetoothSerial &SerialBT, const char id, const void *data, size
     buffer[0] = id;
     memcpy(buffer + 1, data, dataSize);
     SerialBT.write(buffer, sizeof(buffer));
-    digitalWrite(BT_LED_PIN, TOGGLE_500MS_STATE);
+    digitalWrite(BT_LED_PIN, TOGGLE_200MS_STATE);
 }
 
 void receiveStruct(BluetoothSerial &SerialBT)
@@ -36,6 +36,7 @@ void receiveStruct(BluetoothSerial &SerialBT)
             }
             LinacQuatData receivedData;
             memcpy(&receivedData, buffer + 1, sizeof(LinacQuatData));
+            remoteBnoData.timestamp = receivedData.timestamp;
             remoteBnoData.linearAccel = receivedData.linearAccel;
             remoteBnoData.orientation = receivedData.orientation;
             break;
@@ -56,21 +57,21 @@ void receiveStruct(BluetoothSerial &SerialBT)
         default:
             break;
         }
-        digitalWrite(BT_LED_PIN, TOGGLE_500MS_STATE);
+        digitalWrite(BT_LED_PIN, TOGGLE_200MS_STATE);
     }
 }
 
 void sendBT(BluetoothSerial &SerialBT, const void *data, size_t dataSize)
 {
     SerialBT.write((const uint8_t *)data, dataSize);
-    digitalWrite(BT_LED_PIN, TOGGLE_500MS_STATE);
+    digitalWrite(BT_LED_PIN, TOGGLE_200MS_STATE);
 }
 
 void receiveBT(BluetoothSerial &SerialBT, void *data, size_t dataSize)
 {
     SerialBT.readBytes((char *)data, dataSize);
     // SerialBT.flush(); // flush any remaining or qued data
-    digitalWrite(BT_LED_PIN, TOGGLE_500MS_STATE);
+    digitalWrite(BT_LED_PIN, TOGGLE_200MS_STATE);
 }
 
 void unpairBT(BluetoothSerial &SerialBT)
@@ -106,6 +107,7 @@ void bluetoothTXTask(void *pvParameters)
 {
     BluetoothSerial SerialBT = (BluetoothSerial &)pvParameters;
     pinMode(BT_LED_PIN, OUTPUT);
+    digitalWrite(BT_LED_PIN, LOW);
     for (;;)
     {
         if (currentBluetoothMode == MODE_DISCONNECT)
@@ -125,7 +127,7 @@ void bluetoothTXTask(void *pvParameters)
             {
             case MODE_LINACQUAD:
             {
-                LinacQuatData dataToSend = {localBnoData.linearAccel, localBnoData.orientation};
+                LinacQuatData dataToSend = {localBnoData.timestamp, localBnoData.linearAccel, localBnoData.orientation};
                 sendStruct(SerialBT, LinacQuatData_ID, &dataToSend, sizeof(LinacQuatData));
                 break;
             }

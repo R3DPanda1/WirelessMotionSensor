@@ -3,6 +3,7 @@
 volatile OperationMode currentOperationMode = MODE_LINACQUAD;
 volatile BluetoothMode currentBluetoothMode = MODE_DISCONNECTED;
 volatile RecordingMode currentRecordingMode = NONE;
+volatile uint8_t SD_inserted = 0;
 
 BNO055Data localBnoData;
 BNO055Data remoteBnoData;

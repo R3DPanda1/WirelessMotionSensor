@@ -14,7 +14,7 @@ void sensorTask(void *pvParameters)
     }
 
     int delayAmount = 10;
-   // TickType_t xFrequency = pdMS_TO_TICKS(10);      // Convert 10 ms to ticks (100 Hz)
+    //TickType_t xFrequency = pdMS_TO_TICKS(10);      // Convert 10 ms to ticks (100 Hz)
     //TickType_t xLastWakeTime = xTaskGetTickCount(); // Get the current tick
 
     for (;;)
@@ -36,6 +36,7 @@ void sensorTask(void *pvParameters)
 
 void readSensor()
 {
+    localBnoData.timestamp = millis();
     localBnoData.orientation = bno.getQuat();
     localBnoData.linearAccel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
 }

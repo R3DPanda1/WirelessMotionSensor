@@ -6,7 +6,6 @@
 #define PACKET_SIZE 96  // Bluetooth packet size (must be higher than the biggest struct that can be sent and <=512)
 #define BT_LED_PIN 16
 // used to indicate BT communication without toggling too fast
-#define TOGGLE_500MS_STATE ((millis() % 200 < 100) ? HIGH : LOW)
 
 const String bluetoothName = "WirelessMotionSensor";
 

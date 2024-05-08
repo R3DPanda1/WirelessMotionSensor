@@ -53,9 +53,11 @@ void buttonTask(void *pvParameters)
         case REC_SW:
             if (currentRecordingMode == NONE)
             {
+                displayNotification("Recording...");
                 currentRecordingMode = SD_CARD;
             }
             else{
+                displayNotification("Recording stopped");
                 currentRecordingMode = NONE;
             }
             break;

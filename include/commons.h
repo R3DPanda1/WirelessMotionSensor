@@ -4,7 +4,7 @@
 /**
  * @file commons.h
  *
- * This file serves as a central place for common definitions and 
+ * This file serves as a central place for common definitions and
  * declarations used throughout the project.
  */
 
@@ -13,39 +13,48 @@
 #include <freertos/task.h>
 #include <freertos/queue.h>
 
+#define TOGGLE_200MS_STATE ((millis() % 400 < 200) ? HIGH : LOW)
+
 extern QueueHandle_t displayNotificationQueue;
-void displayNotification(const char* message);
+void displayNotification(const char *message);
 
 const char LinacQuatData_ID = 'M';
-struct LinacQuatData {
-  imu::Vector<3> linearAccel;
-  imu::Quaternion orientation;
+struct LinacQuatData
+{
+    unsigned long timestamp;
+    imu::Vector<3> linearAccel;
+    imu::Quaternion orientation;
 };
 
 const char NoneData_ID = 'N';
-struct NoneData {
+struct NoneData
+{
     int test;
 };
 
-struct BNO055Data {
-    imu::Vector<3> accelerometer;  // x, y, z values in m/s^2
-    imu::Vector<3> magnetometer;   // x, y, z values in microteslas
-    imu::Vector<3> gyroscope;      // x, y, z values in rad/s
-    imu::Quaternion orientation;    // quaternion output for 3D orientation
-    imu::Vector<3> linearAccel;    // linear acceleration (gravity subtracted)
-    int8_t temperature;            // temperature in degrees Celsius
+struct BNO055Data
+{
+    unsigned long timestamp;
+    imu::Vector<3> accelerometer;
+    imu::Vector<3> magnetometer;
+    imu::Vector<3> gyroscope;
+    imu::Quaternion orientation;
+    imu::Vector<3> linearAccel;
+    int8_t temperature;
 };
 
 extern BNO055Data localBnoData;
 extern BNO055Data remoteBnoData;
 
-enum OperationMode {
+enum OperationMode
+{
     MODE_LINACQUAD,
     MODE_NONE
 };
 extern volatile OperationMode currentOperationMode;
 
-enum BluetoothMode {
+enum BluetoothMode
+{
     MODE_DISCONNECTED,
     MODE_DISCONNECT,
     MODE_CONNECT,
@@ -53,12 +62,16 @@ enum BluetoothMode {
     MODE_CLK_SYNC
 };
 extern volatile BluetoothMode currentBluetoothMode;
+extern volatile uint8_t SD_inserted;
 
-enum RecordingMode {
+enum RecordingMode
+{
     NONE,
     SD_CARD,
     UART
 };
 extern volatile RecordingMode currentRecordingMode;
+
+// SemaphoreHandle_t sdSemaphore;
 
 #endif // BLUETOOTH_H
