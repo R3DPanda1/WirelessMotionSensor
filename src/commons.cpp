@@ -5,8 +5,8 @@ volatile BluetoothMode currentBluetoothMode = MODE_DISCONNECTED;
 volatile RecordingMode currentRecordingMode = NONE;
 volatile uint8_t SD_inserted = 0;
 
-BNO055Data localBnoData;
-BNO055Data remoteBnoData;
+BNO055Data localBnoData = {0};
+BNO055Data remoteBnoData = {0};
 
 void displayNotification(const char* message) {
   if (uxQueueSpacesAvailable(displayNotificationQueue) > 0) {  // Check if there's space in the queue

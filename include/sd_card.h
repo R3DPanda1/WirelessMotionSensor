@@ -7,7 +7,7 @@
 
 #define CS_PIN 5
 
-#define CSV_BUFFER_SIZE 15
+#define CSV_BUFFER_SIZE 50 // at 100Hz = 2 writes per second to SD card
 
 void sdCardTask(void *pvParameters);
 void csvGenTask(void *pvParameters);

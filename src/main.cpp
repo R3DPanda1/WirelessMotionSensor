@@ -14,7 +14,7 @@ void setup()
   xTaskCreate(sensorTask, "SensorTask", 2048, NULL, 2, &sensorTaskHandle);
   xTaskCreate(bluetoothRXTask, "BluetoothRXTask", 2048, &SerialBT, 3, &bluetoothRXTaskHandle);
   xTaskCreate(bluetoothTXTask, "BluetoothTXTask", 4096, &SerialBT, 2, &bluetoothTXTaskHandle);
-  xTaskCreate(sdCardTask, "SDTask", 4096, NULL, 2, &sdCardTaskHandle);
+  xTaskCreate(sdCardTask, "SDTask", 4096, NULL, 1, &sdCardTaskHandle);
 }
 
 void loop()

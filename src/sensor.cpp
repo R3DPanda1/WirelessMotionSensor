@@ -13,24 +13,25 @@ void sensorTask(void *pvParameters)
         vTaskDelete(NULL);
     }
 
-    int delayAmount = 10;
-    //TickType_t xFrequency = pdMS_TO_TICKS(10);      // Convert 10 ms to ticks (100 Hz)
-    //TickType_t xLastWakeTime = xTaskGetTickCount(); // Get the current tick
+    //int delayAmount = 10;
+    TickType_t xFrequency = pdMS_TO_TICKS(10);      // Convert 10 ms to ticks (100 Hz)
+    TickType_t xLastWakeTime = xTaskGetTickCount(); // Get the current tick
 
     for (;;)
     {
         if (currentOperationMode == MODE_LINACQUAD)
         {
-            delayAmount = 10; // 100 Hz
+            //delayAmount = 10; // 100 Hz
         }
         else
         {
-            delayAmount = 100; // 10 Hz
+            //delayAmount = 100; // 10 Hz
+            xFrequency = pdMS_TO_TICKS(100);
         }
         readSensor();
         // Delay until it is time to run again
-        // vTaskDelayUntil(&xLastWakeTime, xFrequency);
-        delay(delayAmount);
+        vTaskDelayUntil(&xLastWakeTime, xFrequency);
+        //delay(delayAmount);
     }
 }
 

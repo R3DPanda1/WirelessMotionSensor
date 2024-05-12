@@ -44,22 +44,31 @@ String generateNewFilename()
     return String("/data") + String(fileCount) + String(".csv");
 }
 
-String vectorToCsvString(imu::Vector<3> vector)
+char *vectorToCsvString(imu::Vector<3> vector, char *buffer)
 {
-    return (String(vector.x()) + ";" + String(vector.y()) + ";" + String(vector.z()) + ";");
+    snprintf(buffer, 50, "%.6f,%.6f,%.6f,", vector.x(), vector.y(), vector.z());
+    return buffer;
 }
 
-// Define a function that formats sensor data into a CSV string.
 String formatSensorData(BNO055Data &data)
 {
-    String result = String(data.timestamp) + ";";
-    result += vectorToCsvString(data.accelerometer);
-    result += vectorToCsvString(data.magnetometer);
-    result += vectorToCsvString(data.gyroscope);
-    result += String(data.orientation.w()) + ";" + String(data.orientation.x()) + ";" + String(data.orientation.y()) + ";" + String(data.orientation.z()) + ";";
-    result += vectorToCsvString(data.linearAccel);
-    result += String(data.temperature) + ";";
-    return result;
+    char buffer[500]; // Buffer to hold the entire CSV line.
+
+    // Buffers for individual vector conversions.
+    char accBuffer[35];
+    char magBuffer[35];
+    char gyroBuffer[35];
+    char laccBuffer[35];
+    snprintf(buffer, sizeof(buffer), "%lu,%s%s%s%.6f,%.6f,%.6f,%.6f,%s%d,",
+             data.timestamp,
+             vectorToCsvString(data.accelerometer, accBuffer),
+             vectorToCsvString(data.magnetometer, magBuffer),
+             vectorToCsvString(data.gyroscope, gyroBuffer),
+             data.orientation.w(), data.orientation.x(), data.orientation.y(), data.orientation.z(),
+             vectorToCsvString(data.linearAccel, laccBuffer),
+             data.temperature);
+
+    return String(buffer); // Convert the entire buffer to a String object just once before returning.
 }
 
 void csvGenTask(void *pvParameters)
@@ -93,7 +102,7 @@ void csvGenTask(void *pvParameters)
                 xSemaphoreGive(csvSemaphore);
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(1000)); // delay when not recording
     }
 }
 
@@ -125,7 +134,6 @@ void sdCardTask(void *pvParameters)
     File myFile = SD.open(currentFilePath.c_str(), FILE_WRITE);
     if (myFile)
     {
-        // Timestamp, Acc, Mag, Gyro, Quat, linAcc, Temp
         myFile.print("Timestamp;AccX;AccY;AccZ;MagX;MagY;MagZ;GyroX;GyroY;GyroZ;QuatW;QuatX;QuatY;QuatZ;linAccX;linAccY;linAccZ;Temp;");  // Write header
         myFile.println("Timestamp;AccX;AccY;AccZ;MagX;MagY;MagZ;GyroX;GyroY;GyroZ;QuatW;QuatX;QuatY;QuatZ;linAccX;linAccY;linAccZ;Temp"); // Write header
         myFile.close();
@@ -140,13 +148,13 @@ void sdCardTask(void *pvParameters)
         };
     }
     csvSemaphore = xSemaphoreCreateBinary();
-    xTaskCreate(csvGenTask, "csvGeneratorTask", 2048, NULL, 2, &csvGenTaskHandle);
+    xTaskCreate(csvGenTask, "csvGeneratorTask", 4096, NULL, 4, &csvGenTaskHandle);
     xSemaphoreGive(csvSemaphore);
 
     for (;;)
     {
-        // TickType_t xFrequency = pdMS_TO_TICKS(10);      // Convert 10 ms to ticks (100 Hz)
-        // TickType_t xLastWakeTime = xTaskGetTickCount(); // Get the current tick
+        TickType_t xFrequency = pdMS_TO_TICKS(10);      // Convert 10 ms to ticks (100 Hz)
+        TickType_t xLastWakeTime = xTaskGetTickCount(); // Get the current tick
         if (dataReady == 1)
         {
             if (xSemaphoreTake(csvSemaphore, portMAX_DELAY) == pdTRUE)
@@ -158,7 +166,7 @@ void sdCardTask(void *pvParameters)
                 xSemaphoreGive(csvSemaphore);
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(5));
-        // vTaskDelayUntil(&xLastWakeTime, xFrequency);
+        // vTaskDelay(pdMS_TO_TICKS(5));
+        vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }
 }
