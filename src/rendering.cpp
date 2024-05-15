@@ -1,8 +1,8 @@
 #include <rendering.h>
 
 // 3D Models
-Vertex cube_vertices[] = {{-5, -5, -5}, {5, -5, -5}, {5, 5, -5}, {-5, 5, -5}, {-5, -5, 5}, {5, -5, 5}, {5, 5, 5}, {-5, 5, 5}, {0, 0, 3}, {0, 0, -3}, {1, 1, -1}, {-1, 1, -1}, {1, -1, -1}, {-1, -1, -1}};
-Index cube_indices[] = {{0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4}, {0, 4}, {1, 5}, {2, 6}, {3, 7}, {8, 9}, {9, 10}, {9, 11}, {9, 12}, {9, 13}};
+Vertex cube_vertices[] = {{-5, -5, -5}, {5, -5, -5}, {5, 5, -5}, {-5, 5, -5}, {-5, -5, 5}, {5, -5, 5}, {5, 5, 5}, {-5, 5, 5}, {0, 0, 0}, {0, 0, -4}, {0.5, 0, -2.5}, {-0.5, 0, -2.5}, {0, -0.5, -2.5}, {0, 0.5, -2.5}, {0, -4, 0}, {0, -2.5, 0.5}, {0, -2.5, -0.5}, {-0.5, -2.5, 0}, {0.5, -2.5, 0}, {-4, 0, 0}, {-2.5, 0.5, 0}, {-2.5, -0.5, 0}, {-2.5, 0, -0.5}, {-2.5, 0, 0.5,}};
+Index cube_indices[] = {{0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4}, {0, 4}, {1, 5}, {2, 6}, {3, 7}, {8, 9}, {9, 10}, {9, 11}, {9, 12}, {9, 13}, {8, 14}, {14, 15}, {14, 16}, {14, 17}, {14, 18}, {8, 19}, {19, 20}, {19, 21}, {19, 22}, {19, 23}};
 Vertex device_vertices[] = {{-3.5, 2, 1}, {3.5, 2, 1}, {3.5, -2, 1}, {-3.5, -2, 1}, {-3.5, 2, -1}, {3.5, 2, -1}, {3.5, -2, -1}, {-3.5, -2, -1}, {1.5, 1, -1}, {-1.5, 1, -1}, {-1.5, -1, -1}, {1.5, -1, -1}};
 Index device_indices[] = {{0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4}, {0, 4}, {1, 5}, {2, 6}, {3, 7}, {8, 9}, {9, 10}, {10, 11}, {11, 8}};
 
@@ -63,11 +63,34 @@ void renderTask(void *pvParameters)
       drawRotatedObj(display, cubeModel, 3.5, SCREEN_WIDTH / 4 * 1, SCREEN_HEIGHT / 2, cubeAdjustedQuat);
       drawAccelGraph(display, renderedBnoData.linearAccel);
       break;
-    case MODE_NONE:
-
+    case MODE_TEMP:
+      display.setCursor(18, 0);
+      display.print("Local");
+      display.drawBitmap(13, 12, thermometSprite, thermometSprite_W, thermometSprite_H, SH110X_WHITE);
+      display.fillRect(19, 14 + 39 - localBnoData.temperature / 2, 4, localBnoData.temperature / 2, SH110X_WHITE);
+      display.setCursor(15 + thermometSprite_W, 13);
+      display.setTextSize(2);
+      display.print(localBnoData.temperature);
+      display.print("C");
+      display.setTextSize(1);
+      if (currentBluetoothMode == MODE_CONNECTED)
+      {
+        display.setTextSize(1);
+        display.setCursor(57 + 18, 0);
+        display.print("Remote");
+        display.drawBitmap(57 + 13, 12, thermometSprite, thermometSprite_W, thermometSprite_H, SH110X_WHITE);
+        display.fillRect(57 + 19, 14 + 39 - remoteBnoData.temperature / 2, 4, remoteBnoData.temperature / 2, SH110X_WHITE);
+        display.setCursor(57 + 15 + thermometSprite_W, 13);
+        display.setTextSize(2);
+        display.print(remoteBnoData.temperature);
+        display.print("C");
+        display.setTextSize(1);
+      }
+      // display.println(remoteBnoData.temperature);
       break;
     }
 
+    // Show notification
     if (millis() < drawNotificationUntil)
     {
       // Set cursor position to horizontally center the text
@@ -78,6 +101,8 @@ void renderTask(void *pvParameters)
 
       display.print(notification);
     }
+    // display.setCursor(SCREEN_WIDTH - 30, SCREEN_HEIGHT - 30);
+    // display.print(analogRead(LIPO_MONITOR_PIN));
 
     display.display();
     if (uxQueueMessagesWaiting(displayNotificationQueue) > 0 && millis() > drawNotificationUntil)

@@ -13,6 +13,8 @@
 #include <freertos/task.h>
 #include <freertos/queue.h>
 
+#define LIPO_MONITOR_PIN 33
+
 #define TOGGLE_200MS_STATE ((millis() % 400 < 200) ? HIGH : LOW)
 
 extern QueueHandle_t displayNotificationQueue;
@@ -24,6 +26,13 @@ struct LinacQuatData
     unsigned long timestamp;
     imu::Vector<3> linearAccel;
     imu::Quaternion orientation;
+};
+
+const char TempData_ID = 'T';
+struct TempData
+{
+    unsigned long timestamp;
+    int8_t temperature;
 };
 
 const char NoneData_ID = 'N';
@@ -49,7 +58,7 @@ extern BNO055Data remoteBnoData;
 enum OperationMode
 {
     MODE_LINACQUAD,
-    MODE_NONE
+    MODE_TEMP
 };
 extern volatile OperationMode currentOperationMode;
 

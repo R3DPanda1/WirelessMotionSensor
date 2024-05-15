@@ -41,17 +41,17 @@ void receiveStruct(BluetoothSerial &SerialBT)
             remoteBnoData.orientation = receivedData.orientation;
             break;
         }
-        case NoneData_ID:
+        case TempData_ID:
         {
-            if (currentOperationMode != MODE_NONE && btState == SLAVE)
+            if (currentOperationMode != MODE_TEMP && btState == SLAVE)
             {
-                currentOperationMode = MODE_NONE;
-                displayNotification("None");
+                currentOperationMode = MODE_TEMP;
+                displayNotification("Temperature");
             }
-            NoneData receivedData;
-            memcpy(&receivedData, buffer + 1, sizeof(NoneData));
-            Serial.print("Test:");
-            Serial.println(receivedData.test);
+            TempData receivedData;
+            memcpy(&receivedData, buffer + 1, sizeof(TempData));
+            remoteBnoData.timestamp = receivedData.timestamp;
+            remoteBnoData.temperature = receivedData.temperature;
             break;
         }
         default:
@@ -131,10 +131,11 @@ void bluetoothTXTask(void *pvParameters)
                 sendStruct(SerialBT, LinacQuatData_ID, &dataToSend, sizeof(LinacQuatData));
                 break;
             }
-            case MODE_NONE:
+            case MODE_TEMP:
             {
-                NoneData dataToSend = {0};
-                sendStruct(SerialBT, NoneData_ID, &dataToSend, sizeof(NoneData));
+                TempData dataToSend = {localBnoData.timestamp, localBnoData.temperature};
+                sendStruct(SerialBT, TempData_ID, &dataToSend, sizeof(TempData));
+                vTaskDelay(990 / portTICK_PERIOD_MS);
                 break;
             }
             }

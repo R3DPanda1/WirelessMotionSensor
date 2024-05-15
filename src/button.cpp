@@ -28,6 +28,8 @@ void buttonTask(void *pvParameters)
         pinMode(buttonPins[i], INPUT_PULLUP);
     }
 
+    vTaskDelay(100 / portTICK_PERIOD_MS); // buttons can 
+
     // loop
     for (;;)
     {
@@ -77,10 +79,10 @@ void buttonTask(void *pvParameters)
             switch (currentOperationMode)
             {
             case MODE_LINACQUAD:
-                currentOperationMode = MODE_NONE;
-                displayNotification("None");
+                currentOperationMode = MODE_TEMP;
+                displayNotification("Temperature");
                 break;
-            case MODE_NONE:
+            case MODE_TEMP:
                 currentOperationMode = MODE_LINACQUAD;
                 displayNotification("L-Accel&Orientation");
                 break;
