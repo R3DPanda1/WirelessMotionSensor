@@ -49,7 +49,6 @@ void renderTask(void *pvParameters)
     if (currentBluetoothMode == MODE_CONNECTED)
     {
       renderedBnoData = remoteBnoData;
-      display.drawBitmap(0, 0, btSprite, 8, sizeof(btSprite), SH110X_INVERSE);
     }
 
     imu::Quaternion cubeAdjustedQuat;
@@ -110,7 +109,6 @@ void renderTask(void *pvParameters)
         display.setCursor(centerX - textWidth / 2, centerY - textHeight / 2);
         display.print(tilt);
       }
-      display.setTextSize(1);
       break;
     }
     case MODE_TEMP:
@@ -149,11 +147,17 @@ void renderTask(void *pvParameters)
       display.fillRect((SCREEN_WIDTH - w) / 2 - padding, 0, w + 2 * padding, h + 2 * padding, SH110X_BLACK);
       display.drawRect((SCREEN_WIDTH - w) / 2 - padding, 0, w + 2 * padding, h + 2 * padding, SH110X_WHITE);
 
+      display.setTextSize(1);
+      display.setTextColor(SH110X_WHITE);
       display.print(notification);
     }
     // display.setCursor(SCREEN_WIDTH - 30, SCREEN_HEIGHT - 30);
     // display.print(analogRead(LIPO_MONITOR_PIN));
-
+    if (currentBluetoothMode == MODE_CONNECTED)
+    {
+      renderedBnoData = remoteBnoData;
+      display.drawBitmap(0, 0, btSprite, 8, sizeof(btSprite), SH110X_INVERSE);
+    }
     if (SD_inserted == 1)
     {
       if (currentRecordingMode != SD_CARD || TOGGLE_200MS_STATE)
@@ -162,19 +166,25 @@ void renderTask(void *pvParameters)
       }
     }
 
+    // Draw battery level icon
+    int batt_level = analogRead(LIPO_MONITOR_PIN);
+    display.drawBitmap(SCREEN_WIDTH - 13, 0, batterySprite, 13, 7, SH110X_INVERSE);
+    int batt_pixels = map(batt_level, 1700, 2350, 0, 8);
+    batt_pixels = constrain(batt_pixels, 0, 8);
+    display.fillRect(SCREEN_WIDTH - 13 + 2, 2, batt_pixels, 3, SH110X_INVERSE);
+    display.setCursor(20, 20);
+    display.print(batt_level);
+
     display.display();
     if (uxQueueMessagesWaiting(displayNotificationQueue) > 0 && millis() > drawNotificationUntil)
     {
       if (xQueueReceive(displayNotificationQueue, &notification, portMAX_DELAY) == pdTRUE)
       {
         display.setTextSize(1);
-        display.setTextColor(SH110X_WHITE);
-
         // Calculate the width and height of the notification text
         display.getTextBounds(notification, 0, 0, &x1, &y1, &w, &h);
 
         // Display the notification
-        display.println(notification);
         drawNotificationUntil = millis() + 1000;
       }
     }

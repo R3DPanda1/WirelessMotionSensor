@@ -46,6 +46,11 @@ const uint8_t btSprite[] = {
     0b01101110,
     0b00111100};
 
+// 'battery', 13x7px
+const unsigned char batterySprite [] PROGMEM = {
+	0xff, 0xf0, 0x80, 0x10, 0x80, 0x18, 0x80, 0x18, 0x80, 0x18, 0x80, 0x10, 0xff, 0xf0
+};
+
 const uint8_t sdSprite[] = {
     0b11111110,
     0b10101010,
