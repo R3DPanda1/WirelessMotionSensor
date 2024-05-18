@@ -43,8 +43,8 @@ void configureHighGInterrupt()
 
     writeBNO(Adafruit_BNO055::BNO055_PAGE_ID_ADDR, 0);
 
-    //writeBNO(TEMP_SOURCE, 0b00000001); //choose the gyro temperature sensor
-    //writeBNO(UNIT_SEL, 0b10010000); //get Fahrenheit
+    // writeBNO(TEMP_SOURCE, 0b00000001); //choose the gyro temperature sensor
+    // writeBNO(UNIT_SEL, 0b10010000); //get Fahrenheit
 
     bno.setMode(OPERATION_MODE_NDOF);
 }
@@ -61,23 +61,27 @@ void sensorTask(void *pvParameters)
     TickType_t xFrequency = pdMS_TO_TICKS(10);      // Convert 10 ms to ticks (100 Hz)
     TickType_t xLastWakeTime = xTaskGetTickCount(); // Get the current tick
 
-    //configureHighGInterrupt();
-
     for (;;)
     {
-        if (currentOperationMode == MODE_LINACQUAD)
+        if (currentOperationMode == MODE_TEMP)
         {
-            xFrequency = pdMS_TO_TICKS(10);
+            xFrequency = pdMS_TO_TICKS(1000);
         }
         else
         {
-            // delayAmount = 100; // 1 Hz
-            xFrequency = pdMS_TO_TICKS(1000);
+            xFrequency = pdMS_TO_TICKS(10);
         }
         readSensor();
+
+        if (currentBluetoothMode == MODE_CLK_SYNC)
+        {
+            configureHighGInterrupt();
+            vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(5000));
+            currentBluetoothMode = MODE_CONNECTED;
+        }
+
         // Delay until it is time to run again
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
-        // delay(delayAmount);
     }
 }
 
@@ -89,6 +93,11 @@ void readSensor()
         localBnoData.timestamp = millis();
         localBnoData.orientation = bno.getQuat();
         localBnoData.linearAccel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
+        break;
+    case MODE_LEVEL:
+        localBnoData.timestamp = millis();
+        localBnoData.orientation = bno.getQuat();
+        //localBnoData.linearAccel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
         break;
     case MODE_TEMP:
         localBnoData.timestamp = millis();

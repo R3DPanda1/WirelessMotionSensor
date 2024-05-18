@@ -28,7 +28,7 @@ void buttonTask(void *pvParameters)
         pinMode(buttonPins[i], INPUT_PULLUP);
     }
 
-    vTaskDelay(100 / portTICK_PERIOD_MS); // buttons can 
+    vTaskDelay(100 / portTICK_PERIOD_MS); // buttons can
 
     // loop
     for (;;)
@@ -58,7 +58,8 @@ void buttonTask(void *pvParameters)
                 displayNotification("Recording...");
                 currentRecordingMode = SD_CARD;
             }
-            else{
+            else
+            {
                 displayNotification("Recording stopped");
                 currentRecordingMode = NONE;
             }
@@ -83,6 +84,10 @@ void buttonTask(void *pvParameters)
                 displayNotification("Temperature");
                 break;
             case MODE_TEMP:
+                currentOperationMode = MODE_LEVEL;
+                displayNotification("Spirit Level");
+                break;
+            case MODE_LEVEL:
                 currentOperationMode = MODE_LINACQUAD;
                 displayNotification("L-Accel&Orientation");
                 break;
@@ -92,6 +97,7 @@ void buttonTask(void *pvParameters)
             if (currentBluetoothMode == MODE_CONNECTED)
             {
                 currentBluetoothMode = MODE_CLK_SYNC;
+                displayNotification("Sync started");
             }
             break;
         default:

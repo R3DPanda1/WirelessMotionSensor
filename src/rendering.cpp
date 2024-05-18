@@ -1,7 +1,11 @@
 #include <rendering.h>
 
 // 3D Models
-Vertex cube_vertices[] = {{-5, -5, -5}, {5, -5, -5}, {5, 5, -5}, {-5, 5, -5}, {-5, -5, 5}, {5, -5, 5}, {5, 5, 5}, {-5, 5, 5}, {0, 0, 0}, {0, 0, -4}, {0.5, 0, -2.5}, {-0.5, 0, -2.5}, {0, -0.5, -2.5}, {0, 0.5, -2.5}, {0, -4, 0}, {0, -2.5, 0.5}, {0, -2.5, -0.5}, {-0.5, -2.5, 0}, {0.5, -2.5, 0}, {-4, 0, 0}, {-2.5, 0.5, 0}, {-2.5, -0.5, 0}, {-2.5, 0, -0.5}, {-2.5, 0, 0.5,}};
+Vertex cube_vertices[] = {{-5, -5, -5}, {5, -5, -5}, {5, 5, -5}, {-5, 5, -5}, {-5, -5, 5}, {5, -5, 5}, {5, 5, 5}, {-5, 5, 5}, {0, 0, 0}, {0, 0, -4}, {0.5, 0, -2.5}, {-0.5, 0, -2.5}, {0, -0.5, -2.5}, {0, 0.5, -2.5}, {0, -4, 0}, {0, -2.5, 0.5}, {0, -2.5, -0.5}, {-0.5, -2.5, 0}, {0.5, -2.5, 0}, {-4, 0, 0}, {-2.5, 0.5, 0}, {-2.5, -0.5, 0}, {-2.5, 0, -0.5}, {
+                                                                                                                                                                                                                                                                                                                                                                       -2.5,
+                                                                                                                                                                                                                                                                                                                                                                       0,
+                                                                                                                                                                                                                                                                                                                                                                       0.5,
+                                                                                                                                                                                                                                                                                                                                                                   }};
 Index cube_indices[] = {{0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4}, {0, 4}, {1, 5}, {2, 6}, {3, 7}, {8, 9}, {9, 10}, {9, 11}, {9, 12}, {9, 13}, {8, 14}, {14, 15}, {14, 16}, {14, 17}, {14, 18}, {8, 19}, {19, 20}, {19, 21}, {19, 22}, {19, 23}};
 Vertex device_vertices[] = {{-3.5, 2, 1}, {3.5, 2, 1}, {3.5, -2, 1}, {-3.5, -2, 1}, {-3.5, 2, -1}, {3.5, 2, -1}, {3.5, -2, -1}, {-3.5, -2, -1}, {1.5, 1, -1}, {-1.5, 1, -1}, {-1.5, -1, -1}, {1.5, -1, -1}};
 Index device_indices[] = {{0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4}, {0, 4}, {1, 5}, {2, 6}, {3, 7}, {8, 9}, {9, 10}, {10, 11}, {11, 8}};
@@ -47,15 +51,9 @@ void renderTask(void *pvParameters)
       renderedBnoData = remoteBnoData;
       display.drawBitmap(0, 0, btSprite, 8, sizeof(btSprite), SH110X_INVERSE);
     }
-    if (SD_inserted == 1)
-    {
-      if (currentRecordingMode != SD_CARD || TOGGLE_200MS_STATE)
-      {
-        display.drawBitmap(0, SCREEN_HEIGHT - sizeof(sdSprite), sdSprite, 8, sizeof(sdSprite), SH110X_INVERSE);
-      }
-    }
 
     imu::Quaternion cubeAdjustedQuat;
+    imu::Vector<3> euler;
     switch (currentOperationMode)
     {
     case MODE_LINACQUAD:
@@ -63,6 +61,58 @@ void renderTask(void *pvParameters)
       drawRotatedObj(display, cubeModel, 3.5, SCREEN_WIDTH / 4 * 1, SCREEN_HEIGHT / 2, cubeAdjustedQuat);
       drawAccelGraph(display, renderedBnoData.linearAccel);
       break;
+    case MODE_LEVEL:
+    {
+      euler = renderedBnoData.orientation.toEuler();
+
+      // Euler angles in radians, convert to degrees
+      float yaw = euler.x() * 180.0 / M_PI;
+      float roll = euler.y() * 180.0 / M_PI;
+      float pitch = euler.z() * 180.0 / M_PI;
+
+      // Calculate the tilt
+      int tilt = sqrt(pitch * pitch + roll * roll);
+
+      // Calculate positions for spirit level circles
+      int centerX = SCREEN_WIDTH / 2;
+      int centerY = SCREEN_HEIGHT / 2;
+      int radius = 30;
+      int maxOffset = 90 + radius;
+
+      // Calculate offsets based on pitch and roll
+      int offsetX = map(roll, 90, -90, -maxOffset, maxOffset);
+      int offsetY = map(pitch, 90, -90, -maxOffset, maxOffset);
+      int16_t x1, y1;
+      uint16_t textWidth, textHeight;
+      display.setTextSize(2);
+      display.setTextColor(SH110X_INVERSE);
+      if (pitch > 45)
+      {
+        offsetX = map(roll, 26, -26, -centerY, centerY); // not exact. 26 is chosen by trial and error
+        offsetY = map(pitch, 0, 180, -SCREEN_HEIGHT, SCREEN_HEIGHT);
+        // draw horizontal level quadrangle using triangles
+        if (roll < 80 && roll > -80) // triangle render method breaks for values outside this range
+        {
+          display.fillTriangle(centerX, SCREEN_HEIGHT, 0, centerY - offsetX - offsetY, SCREEN_WIDTH, centerY + offsetX - offsetY, SH110X_WHITE);
+          display.fillTriangle(centerX, SCREEN_HEIGHT, 0, centerY - offsetX - offsetY, 0, SCREEN_HEIGHT, SH110X_WHITE);
+          display.fillTriangle(centerX, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, centerY + offsetX - offsetY, SH110X_WHITE);
+        }
+        display.getTextBounds(String((int)roll), 0, 0, &x1, &y1, &textWidth, &textHeight);
+        display.setCursor(centerX - textWidth / 2, centerY - textHeight / 2);
+        display.print((int)roll);
+      }
+      else
+      {
+        // Draw spirit level indicator
+        display.fillCircle(centerX + offsetX, centerY + offsetY, radius, SH110X_INVERSE);
+        display.fillCircle(centerX - offsetX, centerY - offsetY, radius + 1, SH110X_INVERSE);
+        display.getTextBounds(String(tilt), 0, 0, &x1, &y1, &textWidth, &textHeight);
+        display.setCursor(centerX - textWidth / 2, centerY - textHeight / 2);
+        display.print(tilt);
+      }
+      display.setTextSize(1);
+      break;
+    }
     case MODE_TEMP:
       display.setCursor(18, 0);
       display.print("Local");
@@ -104,11 +154,22 @@ void renderTask(void *pvParameters)
     // display.setCursor(SCREEN_WIDTH - 30, SCREEN_HEIGHT - 30);
     // display.print(analogRead(LIPO_MONITOR_PIN));
 
+    if (SD_inserted == 1)
+    {
+      if (currentRecordingMode != SD_CARD || TOGGLE_200MS_STATE)
+      {
+        display.drawBitmap(0, SCREEN_HEIGHT - sizeof(sdSprite), sdSprite, 8, sizeof(sdSprite), SH110X_INVERSE);
+      }
+    }
+
     display.display();
     if (uxQueueMessagesWaiting(displayNotificationQueue) > 0 && millis() > drawNotificationUntil)
     {
       if (xQueueReceive(displayNotificationQueue, &notification, portMAX_DELAY) == pdTRUE)
       {
+        display.setTextSize(1);
+        display.setTextColor(SH110X_WHITE);
+
         // Calculate the width and height of the notification text
         display.getTextBounds(notification, 0, 0, &x1, &y1, &w, &h);
 

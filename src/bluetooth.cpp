@@ -54,6 +54,19 @@ void receiveStruct(BluetoothSerial &SerialBT)
             remoteBnoData.temperature = receivedData.temperature;
             break;
         }
+        case LevelData_ID:
+        {
+            if (currentOperationMode != MODE_LEVEL && btState == SLAVE)
+            {
+                currentOperationMode = MODE_LEVEL;
+                displayNotification("Spirit Level");
+            }
+            LevelData receivedData;
+            memcpy(&receivedData, buffer + 1, sizeof(LevelData));
+            remoteBnoData.timestamp = receivedData.timestamp;
+            remoteBnoData.orientation = receivedData.orientation;
+            break;
+        }
         default:
             break;
         }
@@ -118,7 +131,7 @@ void bluetoothTXTask(void *pvParameters)
         else if (SerialBT.connected())
         {
 
-            if (currentBluetoothMode != MODE_CONNECTED)
+            if (currentBluetoothMode != MODE_CONNECTED && currentBluetoothMode != MODE_CLK_SYNC)
             {
                 displayNotification("Connected!");
                 currentBluetoothMode = MODE_CONNECTED;
@@ -136,6 +149,12 @@ void bluetoothTXTask(void *pvParameters)
                 TempData dataToSend = {localBnoData.timestamp, localBnoData.temperature};
                 sendStruct(SerialBT, TempData_ID, &dataToSend, sizeof(TempData));
                 vTaskDelay(990 / portTICK_PERIOD_MS);
+                break;
+            }
+            case MODE_LEVEL:
+            {
+                LevelData dataToSend = {localBnoData.timestamp, localBnoData.orientation};
+                sendStruct(SerialBT, LevelData_ID, &dataToSend, sizeof(LevelData));
                 break;
             }
             }

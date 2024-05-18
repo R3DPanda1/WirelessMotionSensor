@@ -28,6 +28,13 @@ struct LinacQuatData
     imu::Quaternion orientation;
 };
 
+const char LevelData_ID = 'L';
+struct LevelData
+{
+    unsigned long timestamp;
+    imu::Quaternion orientation;
+};
+
 const char TempData_ID = 'T';
 struct TempData
 {
@@ -58,6 +65,7 @@ extern BNO055Data remoteBnoData;
 enum OperationMode
 {
     MODE_LINACQUAD,
+    MODE_LEVEL,
     MODE_TEMP
 };
 extern volatile OperationMode currentOperationMode;
