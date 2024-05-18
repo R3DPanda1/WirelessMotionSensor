@@ -40,6 +40,9 @@ void renderTask(void *pvParameters)
   uint16_t w, h;
   const uint16_t padding = 3;
   unsigned long drawNotificationUntil = 0;
+  int batt_level = analogRead(LIPO_MONITOR_PIN);
+  int batt_pixels = map(batt_level, 1700, 2300, 0, 8);
+  unsigned long nextBatteryMesurement = 0;
 
   for (;;)
   {
@@ -85,6 +88,7 @@ void renderTask(void *pvParameters)
       uint16_t textWidth, textHeight;
       display.setTextSize(2);
       display.setTextColor(SH110X_INVERSE);
+
       if (pitch > 45)
       {
         offsetX = map(roll, 26, -26, -centerY, centerY); // not exact. 26 is chosen by trial and error
@@ -167,13 +171,16 @@ void renderTask(void *pvParameters)
     }
 
     // Draw battery level icon
-    int batt_level = analogRead(LIPO_MONITOR_PIN);
+    if (nextBatteryMesurement < millis())
+    {
+      batt_level = analogRead(LIPO_MONITOR_PIN);
+      batt_pixels = map(batt_level, 1700, 2300, 0, 8);
+      nextBatteryMesurement = millis() + 3000;
+    }
+
     display.drawBitmap(SCREEN_WIDTH - 13, 0, batterySprite, 13, 7, SH110X_INVERSE);
-    int batt_pixels = map(batt_level, 1700, 2350, 0, 8);
     batt_pixels = constrain(batt_pixels, 0, 8);
     display.fillRect(SCREEN_WIDTH - 13 + 2, 2, batt_pixels, 3, SH110X_INVERSE);
-    display.setCursor(20, 20);
-    display.print(batt_level);
 
     display.display();
     if (uxQueueMessagesWaiting(displayNotificationQueue) > 0 && millis() > drawNotificationUntil)
