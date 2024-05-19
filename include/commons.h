@@ -37,7 +37,7 @@ enum SyncMode
 };
 extern volatile SyncMode currentSyncMode;
 
-const char FusionData_ID = 'M';
+const char FusionData_ID = 'F';
 struct FusionData
 {
     unsigned long timestamp;
