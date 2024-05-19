@@ -103,6 +103,7 @@ void receiveBT(BluetoothSerial &SerialBT, void *data, size_t dataSize)
 
 void unpairBT(BluetoothSerial &SerialBT)
 {
+    displayNotification("Disconnected!"); //show message early for quick response
     SerialBT.disconnect();
     // SerialBT.flush();
     SerialBT.end();
@@ -110,7 +111,6 @@ void unpairBT(BluetoothSerial &SerialBT)
     btState = UNPAIRED;
     currentBluetoothMode = MODE_DISCONNECTED;
     digitalWrite(BT_LED_PIN, LOW);
-    displayNotification("Disconnected!");
 }
 
 void bluetoothRXTask(void *pvParameters)
@@ -139,7 +139,6 @@ void bluetoothTXTask(void *pvParameters)
     {
         if (currentBluetoothMode == MODE_DISCONNECT)
         {
-            Serial.println("Disconnecting!");
             unpairBT(SerialBT);
         }
         else if (SerialBT.connected())
@@ -186,8 +185,8 @@ void bluetoothTXTask(void *pvParameters)
                 SerialBT.end();
                 SerialBT.begin(bluetoothName, MASTER); // Change bluetooth mode to master
                 btState = MASTER;
-                currentBluetoothMode = MODE_CONNECTING;
                 // Try to connect to a device
+                currentBluetoothMode = MODE_CONNECTING;
                 if (SerialBT.connect(bluetoothName))
                 {
                     displayNotification("Connected!");

@@ -169,12 +169,12 @@ void renderTask(void *pvParameters)
     }
     // display.setCursor(SCREEN_WIDTH - 30, SCREEN_HEIGHT - 30);
     // display.print(analogRead(LIPO_MONITOR_PIN));
-    if (currentBluetoothMode == MODE_CONNECTED)
+    if (currentBluetoothMode == MODE_CONNECTED || (currentBluetoothMode == MODE_CONNECTING && TOGGLE_200MS_STATE))
     {
       renderedBnoData = remoteBnoData;
       display.drawBitmap(0, 0, btSprite, 8, sizeof(btSprite), SH110X_INVERSE);
     }
-    if (SD_inserted == 1)
+    if (currentSdState == CONNECTED)
     {
       if (currentRecordingMode != SD_CARD || TOGGLE_200MS_STATE)
       {

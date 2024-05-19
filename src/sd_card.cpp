@@ -6,7 +6,6 @@ TaskHandle_t csvGenTaskHandle;
 SemaphoreHandle_t csvSemaphore = NULL;
 String csvDataToWrite;
 uint8_t dataReady = 1;
-uint8_t noSD = 0;
 
 void WriteFile(const char *path, const char *data)
 {
@@ -110,18 +109,13 @@ void sdCardTask(void *pvParameters)
 {
     vTaskDelay(pdMS_TO_TICKS(1000)); // if SD card is initialized too early, esp32 reboots
 
-    while (!SD.begin(CS_PIN)) // check if SD card is present
+    if (!SD.begin(CS_PIN)) // check if SD card is present
     {
-        if (noSD == 0)
-        {
             displayNotification("No SD card detected");
-            noSD = 1;
             vTaskDelete(NULL);
-        }
-        vTaskDelay(pdMS_TO_TICKS(3000));
     }
-    displayNotification("SD card inserted");
-    SD_inserted = 1;
+    currentSdState = CONNECTED;
+    displayNotification("SD card connected");
     while (currentRecordingMode != SD_CARD)
     {
         vTaskDelay(pdMS_TO_TICKS(1000));

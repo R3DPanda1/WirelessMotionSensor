@@ -53,27 +53,37 @@ void buttonTask(void *pvParameters)
         switch (buttonPressed)
         {
         case REC_SW:
-            if (currentRecordingMode == NONE)
+            if (currentSdState == CONNECTED)
             {
-                displayNotification("Recording...");
-                currentRecordingMode = SD_CARD;
+                if (currentRecordingMode == NONE)
+                {
+                    displayNotification("Recording...");
+                    currentRecordingMode = SD_CARD;
+                }
+                else
+                {
+                    displayNotification("Recording stopped");
+                    currentRecordingMode = NONE;
+                }
             }
             else
             {
-                displayNotification("Recording stopped");
-                currentRecordingMode = NONE;
+                displayNotification("No SD connected");
             }
             break;
         case BT_SW:
-            if (currentBluetoothMode == MODE_DISCONNECTED)
+            switch (currentBluetoothMode)
             {
+            case MODE_DISCONNECTED:
                 currentBluetoothMode = MODE_CONNECT;
                 displayNotification("Connecting...");
-            }
-            else if (currentBluetoothMode != MODE_CONNECT)
-            {
+                break;
+            case MODE_CONNECTED:
                 currentBluetoothMode = MODE_DISCONNECT;
-                displayNotification("Disconnecting...");
+                break;
+            case MODE_CONNECTING:
+                displayNotification("Still connecting");
+                break;
             }
             break;
         case MODE_SW:
@@ -94,11 +104,19 @@ void buttonTask(void *pvParameters)
             }
             break;
         case CLK_SYNC_SW:
-            if (currentBluetoothMode == MODE_CONNECTED && currentOperationMode != MODE_CLK_SYNC)
+            if (currentBluetoothMode == MODE_CONNECTED)
             {
-                currentSyncMode = MODE_SYNC_START;
-                currentOperationMode = MODE_CLK_SYNC;
+                if (currentOperationMode != MODE_CLK_SYNC)
+                {
+                    currentSyncMode = MODE_SYNC_START;
+                    currentOperationMode = MODE_CLK_SYNC;
+                }
             }
+            else
+            {
+                displayNotification("No BT connection");
+            }
+
             break;
         default:
             // no button pressed

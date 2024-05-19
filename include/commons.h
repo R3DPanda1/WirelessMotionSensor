@@ -37,6 +37,14 @@ enum SyncMode
 };
 extern volatile SyncMode currentSyncMode;
 
+enum SD_State
+{
+    NO_SD,
+    INSERTED,
+    CONNECTED
+};
+extern volatile SD_State currentSdState;
+
 const char FusionData_ID = 'F';
 struct FusionData
 {
@@ -99,13 +107,11 @@ enum BluetoothMode
     MODE_CONNECTED
 };
 extern volatile BluetoothMode currentBluetoothMode;
-extern volatile uint8_t SD_inserted;
 
 enum RecordingMode
 {
     NONE,
-    SD_CARD,
-    UART
+    SD_CARD
 };
 extern volatile RecordingMode currentRecordingMode;
 
