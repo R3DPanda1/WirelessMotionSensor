@@ -35,7 +35,7 @@ void receiveStruct(BluetoothSerial &SerialBT)
                 displayNotification("L-Accel&Orientation");
             }
             LinacQuatData receivedData;
-            memcpy(&receivedData, buffer + 1, sizeof(LinacQuatData));
+            memcpy(&receivedData, buffer + 1, sizeof(receivedData));
             remoteBnoData.timestamp = receivedData.timestamp;
             remoteBnoData.linearAccel = receivedData.linearAccel;
             remoteBnoData.orientation = receivedData.orientation;
@@ -49,7 +49,7 @@ void receiveStruct(BluetoothSerial &SerialBT)
                 displayNotification("Temperature");
             }
             TempData receivedData;
-            memcpy(&receivedData, buffer + 1, sizeof(TempData));
+            memcpy(&receivedData, buffer + 1, sizeof(receivedData));
             remoteBnoData.timestamp = receivedData.timestamp;
             remoteBnoData.temperature = receivedData.temperature;
             break;
@@ -62,12 +62,26 @@ void receiveStruct(BluetoothSerial &SerialBT)
                 displayNotification("Spirit Level");
             }
             LevelData receivedData;
-            memcpy(&receivedData, buffer + 1, sizeof(LevelData));
+            memcpy(&receivedData, buffer + 1, sizeof(receivedData));
             remoteBnoData.timestamp = receivedData.timestamp;
             remoteBnoData.orientation = receivedData.orientation;
             break;
         }
+        case SyncStart_ID:
+        {
+            if (currentOperationMode != MODE_CLK_SYNC && btState == SLAVE)
+            {
+                currentSyncMode = MODE_SYNC_START;
+                currentOperationMode = MODE_CLK_SYNC;
+            }
+            unsigned long receivedData;
+            memcpy(&receivedData, buffer + 1, sizeof(receivedData));
+            remoteBnoData.timestamp = receivedData;
+            break;
+        }
         default:
+            displayNotification("Bluetooth Error!");
+            unpairBT(SerialBT);
             break;
         }
         digitalWrite(BT_LED_PIN, TOGGLE_200MS_STATE);
@@ -131,7 +145,7 @@ void bluetoothTXTask(void *pvParameters)
         else if (SerialBT.connected())
         {
 
-            if (currentBluetoothMode != MODE_CONNECTED && currentBluetoothMode != MODE_CLK_SYNC)
+            if (currentBluetoothMode != MODE_CONNECTED)
             {
                 displayNotification("Connected!");
                 currentBluetoothMode = MODE_CONNECTED;
@@ -141,20 +155,26 @@ void bluetoothTXTask(void *pvParameters)
             case MODE_LINACQUAD:
             {
                 LinacQuatData dataToSend = {localBnoData.timestamp, localBnoData.linearAccel, localBnoData.orientation};
-                sendStruct(SerialBT, LinacQuatData_ID, &dataToSend, sizeof(LinacQuatData));
+                sendStruct(SerialBT, LinacQuatData_ID, &dataToSend, sizeof(dataToSend));
                 break;
             }
             case MODE_TEMP:
             {
                 TempData dataToSend = {localBnoData.timestamp, localBnoData.temperature};
-                sendStruct(SerialBT, TempData_ID, &dataToSend, sizeof(TempData));
+                sendStruct(SerialBT, TempData_ID, &dataToSend, sizeof(dataToSend));
                 vTaskDelay(990 / portTICK_PERIOD_MS);
                 break;
             }
             case MODE_LEVEL:
             {
                 LevelData dataToSend = {localBnoData.timestamp, localBnoData.orientation};
-                sendStruct(SerialBT, LevelData_ID, &dataToSend, sizeof(LevelData));
+                sendStruct(SerialBT, LevelData_ID, &dataToSend, sizeof(dataToSend));
+                break;
+            }
+            case MODE_CLK_SYNC:
+            {
+                unsigned long dataToSend = syncedMillis();
+                sendStruct(SerialBT, SyncStart_ID, &dataToSend, sizeof(dataToSend));
                 break;
             }
             }
@@ -166,7 +186,7 @@ void bluetoothTXTask(void *pvParameters)
                 SerialBT.end();
                 SerialBT.begin(bluetoothName, MASTER); // Change bluetooth mode to master
                 btState = MASTER;
-
+                currentBluetoothMode = MODE_CONNECTING;
                 // Try to connect to a device
                 if (SerialBT.connect(bluetoothName))
                 {
@@ -175,17 +195,9 @@ void bluetoothTXTask(void *pvParameters)
                 }
                 else
                 {
-                    delay(1000);
-                    if (SerialBT.connected())
-                    {
-                        displayNotification("Connected!");
-                        currentBluetoothMode = MODE_CONNECTED;
-                    }
-                    else
-                    {
-                        displayNotification("Couldn't connect!");
-                        unpairBT(SerialBT);
-                    }
+                    displayNotification("Couldn't connect!");
+                    unpairBT(SerialBT);
+                    currentBluetoothMode = MODE_DISCONNECT;
                 }
             }
             else if (currentBluetoothMode != MODE_DISCONNECTED)

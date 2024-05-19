@@ -4,13 +4,15 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
 #include "button.h"
+//#include "commons.h"
 
 // Register addresses not included in the adafruit library
 /* Interrupt registers*/
 #define INT_MASK_ADDR 0x0F
 #define INT_ADDR 0x10
+#define INT_STA 0x37
 #define ACCEL_ANY_MOTION_THRES_ADDR 0x11
-#define ACCEL_INTR_SETTINGS_ADDR 0x12
+#define ACCEL_INT_SETTINGS_ADDR 0x12
 #define ACCEL_HIGH_G_DURN_ADDR 0x13
 #define ACCEL_HIGH_G_THRES_ADDR 0x14
 //masks to set specific axis to the interrupt functions

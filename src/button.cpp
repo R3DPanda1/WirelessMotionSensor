@@ -94,10 +94,10 @@ void buttonTask(void *pvParameters)
             }
             break;
         case CLK_SYNC_SW:
-            if (currentBluetoothMode == MODE_CONNECTED)
+            if (currentBluetoothMode == MODE_CONNECTED && currentOperationMode != MODE_CLK_SYNC)
             {
-                currentBluetoothMode = MODE_CLK_SYNC;
-                displayNotification("Sync started");
+                currentSyncMode = MODE_SYNC_START;
+                currentOperationMode = MODE_CLK_SYNC;
             }
             break;
         default:

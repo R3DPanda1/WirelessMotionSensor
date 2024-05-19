@@ -12,13 +12,30 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/queue.h>
+#include <Arduino.h>
 
 #define LIPO_MONITOR_PIN 33
 
-#define TOGGLE_200MS_STATE ((millis() % 400 < 200) ? HIGH : LOW)
+#define TOGGLE_200MS_STATE ((syncedMillis() % 400 < 200) ? HIGH : LOW)
 
 extern QueueHandle_t displayNotificationQueue;
 void displayNotification(const char *message);
+
+#define HIGH_G_INT_PIN 17
+#define SYNC_BT_TOLERANCE 30 //maximum accepted time difference between devices
+void IRAM_ATTR clk_sync_isr();
+unsigned long syncedMillis();
+
+enum SyncMode
+{
+    MODE_IDLE,
+    MODE_SYNC_START,
+    MODE_WAIT_HIGH_G,
+    MODE_HIGH_G_DETECTED,
+    MODE_RETRY,
+    MODE_SYNC_SUCCESS
+};
+extern volatile SyncMode currentSyncMode;
 
 const char LinacQuatData_ID = 'M';
 struct LinacQuatData
@@ -27,6 +44,8 @@ struct LinacQuatData
     imu::Vector<3> linearAccel;
     imu::Quaternion orientation;
 };
+
+const char SyncStart_ID = 'S';
 
 const char LevelData_ID = 'L';
 struct LevelData
@@ -66,6 +85,7 @@ enum OperationMode
 {
     MODE_LINACQUAD,
     MODE_LEVEL,
+    MODE_CLK_SYNC,
     MODE_TEMP
 };
 extern volatile OperationMode currentOperationMode;
@@ -75,8 +95,8 @@ enum BluetoothMode
     MODE_DISCONNECTED,
     MODE_DISCONNECT,
     MODE_CONNECT,
-    MODE_CONNECTED,
-    MODE_CLK_SYNC
+    MODE_CONNECTING,
+    MODE_CONNECTED
 };
 extern volatile BluetoothMode currentBluetoothMode;
 extern volatile uint8_t SD_inserted;

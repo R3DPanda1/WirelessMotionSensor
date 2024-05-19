@@ -140,6 +140,18 @@ void renderTask(void *pvParameters)
       }
       // display.println(remoteBnoData.temperature);
       break;
+    case MODE_CLK_SYNC:
+      display.setTextSize(1);
+      display.setCursor(5, 20);
+      display.print("Tap devices to sync!");
+      display.drawBitmap(8, 32, syncSprite, syncSprite_W, syncSprite_H, SH110X_WHITE);
+      display.setCursor(55, 35);
+      display.print("L:");
+      display.print(syncedMillis());
+      display.setCursor(55, 50);
+      display.print("R:");
+      display.print(remoteBnoData.timestamp);
+      break;
     }
 
     // Show notification
@@ -178,7 +190,7 @@ void renderTask(void *pvParameters)
       nextBatteryMesurement = millis() + 3000;
     }
 
-    display.drawBitmap(SCREEN_WIDTH - 13, 0, batterySprite, 13, 7, SH110X_INVERSE);
+    display.drawBitmap(SCREEN_WIDTH - 13, 0, batterySprite, batterySprite_W, batterySprite_H, SH110X_INVERSE);
     batt_pixels = constrain(batt_pixels, 0, 8);
     display.fillRect(SCREEN_WIDTH - 13 + 2, 2, batt_pixels, 3, SH110X_INVERSE);
 

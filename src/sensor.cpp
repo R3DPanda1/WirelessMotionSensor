@@ -32,11 +32,16 @@ uint8_t readBNO(uint8_t reg)
 void configureHighGInterrupt()
 {
     bno.setMode(OPERATION_MODE_CONFIG);
+
+    // clear previous interrupt
+    (void)readBNO(INT_STA);
+    writeBNO(Adafruit_BNO055::BNO055_SYS_TRIGGER_ADDR, 0b01000000);
+
     writeBNO(Adafruit_BNO055::BNO055_PAGE_ID_ADDR, 1);
     writeBNO(INT_MASK_ADDR, 0b00100000);
     writeBNO(INT_ADDR, 0b00100000);
 
-    writeBNO(ACCEL_INTR_SETTINGS_ADDR, 0b01000000);
+    writeBNO(ACCEL_INT_SETTINGS_ADDR, 0b01000000);
 
     writeBNO(ACCEL_HIGH_G_THRES_ADDR, 80);
     writeBNO(ACCEL_HIGH_G_DURN_ADDR, 0);
@@ -49,6 +54,17 @@ void configureHighGInterrupt()
     bno.setMode(OPERATION_MODE_NDOF);
 }
 
+void clearInterrupt()
+{
+    bno.setMode(OPERATION_MODE_CONFIG);
+
+    // clear previous interrupt
+    (void)readBNO(INT_STA);
+    writeBNO(Adafruit_BNO055::BNO055_SYS_TRIGGER_ADDR, 0b01000000);
+
+    bno.setMode(OPERATION_MODE_NDOF);
+}
+
 void sensorTask(void *pvParameters)
 {
     if (!bno.begin()) // generates some errors: [Wire.cpp:499] requestFrom(): i2cWriteReadNonStop returned Error -1
@@ -57,30 +73,95 @@ void sensorTask(void *pvParameters)
         vTaskDelete(NULL);
     }
 
+    /* Use external crystal for better accuracy */
+    // bno.setExtCrystalUse(true);
+
     // int delayAmount = 10;
-    TickType_t xFrequency = pdMS_TO_TICKS(10);      // Convert 10 ms to ticks (100 Hz)
-    TickType_t xLastWakeTime = xTaskGetTickCount(); // Get the current tick
+    TickType_t xFrequency = pdMS_TO_TICKS(10); // Convert 10 ms to ticks (100 Hz)
+    unsigned long sync_timeout_time = 0;
 
     for (;;)
     {
-        if (currentOperationMode == MODE_TEMP)
+        if (currentOperationMode == MODE_CLK_SYNC)
         {
-            xFrequency = pdMS_TO_TICKS(1000);
+            if (currentSyncMode == MODE_SYNC_START)
+            {
+                displayNotification("Sync started");
+                configureHighGInterrupt();
+                attachInterrupt(HIGH_G_INT_PIN, clk_sync_isr, RISING);
+                sync_timeout_time = millis() + 5000;
+                currentSyncMode = MODE_WAIT_HIGH_G;
+            }
+            if (currentSyncMode == MODE_RETRY)
+            {
+                clearInterrupt();
+                attachInterrupt(HIGH_G_INT_PIN, clk_sync_isr, RISING);
+                sync_timeout_time = millis() + 5000;
+                currentSyncMode = MODE_WAIT_HIGH_G;
+            }
+            // Wait for interrupt with a timeout
+            while (currentSyncMode == MODE_WAIT_HIGH_G && millis() < sync_timeout_time)
+            {
+                delay(100);
+            }
+            switch (currentSyncMode)
+            {
+            case MODE_WAIT_HIGH_G:
+                displayNotification("Sync failed");
+                currentSyncMode = MODE_IDLE;
+                detachInterrupt(HIGH_G_INT_PIN);
+                currentOperationMode = MODE_LINACQUAD;
+                break;
+            case MODE_HIGH_G_DETECTED:
+            {
+                // check if the remote device was synced roughly at the same time
+                Serial.println(remoteBnoData.timestamp);
+                Serial.println(syncedMillis());
+                unsigned long localTime = remoteBnoData.timestamp;
+                unsigned long remoteTime = syncedMillis();
+                unsigned long timeDiff;
+                if (localTime > remoteTime)
+                {
+                    timeDiff = localTime - remoteTime;
+                }
+                else
+                {
+                    timeDiff = remoteTime - localTime;
+                }
+                if (timeDiff < SYNC_BT_TOLERANCE)
+                {
+                    currentSyncMode = MODE_SYNC_SUCCESS;
+                }
+                else
+                {
+                    displayNotification("Try again!");
+                    currentSyncMode = MODE_RETRY;
+                }
+                break;
+            }
+            case MODE_SYNC_SUCCESS:
+                displayNotification("Synced!");
+                currentSyncMode = MODE_IDLE;
+                detachInterrupt(HIGH_G_INT_PIN);
+                currentOperationMode = MODE_LINACQUAD;
+                break;
+            }
         }
         else
         {
-            xFrequency = pdMS_TO_TICKS(10);
+            if (currentOperationMode == MODE_TEMP)
+            {
+                xFrequency = pdMS_TO_TICKS(1000);
+            }
+            else
+            {
+                xFrequency = pdMS_TO_TICKS(10);
+            }
+            readSensor();
         }
-        readSensor();
-
-        if (currentBluetoothMode == MODE_CLK_SYNC)
-        {
-            configureHighGInterrupt();
-            vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(5000));
-            currentBluetoothMode = MODE_CONNECTED;
-        }
-
         // Delay until it is time to run again
+        TickType_t xLastWakeTime = xTaskGetTickCount(); // Get the current tick
+        xLastWakeTime = xTaskGetTickCount();            // Get the current tick
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }
 }
@@ -90,17 +171,17 @@ void readSensor()
     switch (currentOperationMode)
     {
     case MODE_LINACQUAD:
-        localBnoData.timestamp = millis();
+        localBnoData.timestamp = syncedMillis();
         localBnoData.orientation = bno.getQuat();
         localBnoData.linearAccel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
         break;
     case MODE_LEVEL:
-        localBnoData.timestamp = millis();
+        localBnoData.timestamp = syncedMillis();
         localBnoData.orientation = bno.getQuat();
-        //localBnoData.linearAccel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
+        // localBnoData.linearAccel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
         break;
     case MODE_TEMP:
-        localBnoData.timestamp = millis();
+        localBnoData.timestamp = syncedMillis();
         localBnoData.temperature = bno.getTemp();
         break;
     default:
