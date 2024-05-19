@@ -27,14 +27,14 @@ void receiveStruct(BluetoothSerial &SerialBT)
 
         switch (id)
         {
-        case LinacQuatData_ID:
+        case FusionData_ID:
         {
-            if (currentOperationMode != MODE_LINACQUAD && btState == SLAVE)
+            if (currentOperationMode != MODE_FUSION && btState == SLAVE)
             {
-                currentOperationMode = MODE_LINACQUAD;
-                displayNotification("L-Accel&Orientation");
+                currentOperationMode = MODE_FUSION;
+                displayNotification("Fusion");
             }
-            LinacQuatData receivedData;
+            FusionData receivedData;
             memcpy(&receivedData, buffer + 1, sizeof(receivedData));
             remoteBnoData.timestamp = receivedData.timestamp;
             remoteBnoData.linearAccel = receivedData.linearAccel;
@@ -121,7 +121,7 @@ void bluetoothRXTask(void *pvParameters)
     {
         if (SerialBT.connected())
         {
-            if (SerialBT.available() >= (sizeof(LinacQuatData) + 1))
+            if (SerialBT.available() >= (sizeof(FusionData) + 1))
             {
                 receiveStruct(SerialBT);
             }
@@ -152,10 +152,10 @@ void bluetoothTXTask(void *pvParameters)
             }
             switch (currentOperationMode)
             {
-            case MODE_LINACQUAD:
+            case MODE_FUSION:
             {
-                LinacQuatData dataToSend = {localBnoData.timestamp, localBnoData.linearAccel, localBnoData.orientation};
-                sendStruct(SerialBT, LinacQuatData_ID, &dataToSend, sizeof(dataToSend));
+                FusionData dataToSend = {localBnoData.timestamp, localBnoData.linearAccel, localBnoData.orientation};
+                sendStruct(SerialBT, FusionData_ID, &dataToSend, sizeof(dataToSend));
                 break;
             }
             case MODE_TEMP:

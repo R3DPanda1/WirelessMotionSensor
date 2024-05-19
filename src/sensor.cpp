@@ -110,7 +110,7 @@ void sensorTask(void *pvParameters)
                 displayNotification("Sync failed");
                 currentSyncMode = MODE_IDLE;
                 detachInterrupt(HIGH_G_INT_PIN);
-                currentOperationMode = MODE_LINACQUAD;
+                currentOperationMode = MODE_FUSION;
                 break;
             case MODE_HIGH_G_DETECTED:
             {
@@ -143,7 +143,7 @@ void sensorTask(void *pvParameters)
                 displayNotification("Synced!");
                 currentSyncMode = MODE_IDLE;
                 detachInterrupt(HIGH_G_INT_PIN);
-                currentOperationMode = MODE_LINACQUAD;
+                currentOperationMode = MODE_FUSION;
                 break;
             }
         }
@@ -170,7 +170,7 @@ void readSensor()
 {
     switch (currentOperationMode)
     {
-    case MODE_LINACQUAD:
+    case MODE_FUSION:
         localBnoData.timestamp = syncedMillis();
         localBnoData.orientation = bno.getQuat();
         localBnoData.linearAccel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);

@@ -37,8 +37,8 @@ enum SyncMode
 };
 extern volatile SyncMode currentSyncMode;
 
-const char LinacQuatData_ID = 'M';
-struct LinacQuatData
+const char FusionData_ID = 'M';
+struct FusionData
 {
     unsigned long timestamp;
     imu::Vector<3> linearAccel;
@@ -83,7 +83,7 @@ extern BNO055Data remoteBnoData;
 
 enum OperationMode
 {
-    MODE_LINACQUAD,
+    MODE_FUSION,
     MODE_LEVEL,
     MODE_CLK_SYNC,
     MODE_TEMP

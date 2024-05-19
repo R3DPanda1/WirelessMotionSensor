@@ -1,6 +1,6 @@
 #include "commons.h"
 
-volatile OperationMode currentOperationMode = MODE_LINACQUAD;
+volatile OperationMode currentOperationMode = MODE_FUSION;
 volatile BluetoothMode currentBluetoothMode = MODE_DISCONNECTED;
 volatile RecordingMode currentRecordingMode = NONE;
 volatile SyncMode currentSyncMode = MODE_IDLE;

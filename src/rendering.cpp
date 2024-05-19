@@ -58,7 +58,7 @@ void renderTask(void *pvParameters)
     imu::Vector<3> euler;
     switch (currentOperationMode)
     {
-    case MODE_LINACQUAD:
+    case MODE_FUSION:
       cubeAdjustedQuat = {renderedBnoData.orientation.w(), -renderedBnoData.orientation.x(), renderedBnoData.orientation.y(), renderedBnoData.orientation.z()};
       drawRotatedObj(display, cubeModel, 3.5, SCREEN_WIDTH / 4 * 1, SCREEN_HEIGHT / 2, cubeAdjustedQuat);
       drawAccelGraph(display, renderedBnoData.linearAccel);

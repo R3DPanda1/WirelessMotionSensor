@@ -79,7 +79,7 @@ void buttonTask(void *pvParameters)
         case MODE_SW:
             switch (currentOperationMode)
             {
-            case MODE_LINACQUAD:
+            case MODE_FUSION:
                 currentOperationMode = MODE_TEMP;
                 displayNotification("Temperature");
                 break;
@@ -88,8 +88,8 @@ void buttonTask(void *pvParameters)
                 displayNotification("Spirit Level");
                 break;
             case MODE_LEVEL:
-                currentOperationMode = MODE_LINACQUAD;
-                displayNotification("L-Accel&Orientation");
+                currentOperationMode = MODE_FUSION;
+                displayNotification("Fusion");
                 break;
             }
             break;
