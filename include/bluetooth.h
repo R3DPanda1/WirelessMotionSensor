@@ -15,12 +15,6 @@
 
 const String bluetoothName = "WirelessMotionSensor";
 
-enum BluetoothConnectionState {
-    UNPAIRED,
-    MASTER = 1,
-    SLAVE = 0
-};
-
 void sendBT(BluetoothSerial& SerialBT, const void* data, size_t dataSize);
 void receiveBT(BluetoothSerial& SerialBT, void* data, size_t dataSize);
 void sendStruct(BluetoothSerial &SerialBT, const char id, const void *data, size_t dataSize);

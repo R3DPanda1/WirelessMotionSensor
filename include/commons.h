@@ -22,7 +22,7 @@ extern QueueHandle_t displayNotificationQueue;
 void displayNotification(const char *message);
 
 #define HIGH_G_INT_PIN 17
-#define SYNC_BT_TOLERANCE 30 //maximum accepted time difference between devices
+#define SYNC_BT_TOLERANCE 30 // maximum accepted time difference between devices
 void IRAM_ATTR clk_sync_isr();
 unsigned long syncedMillis();
 
@@ -108,6 +108,14 @@ enum BluetoothMode
     MODE_CONNECTED
 };
 extern volatile BluetoothMode currentBluetoothMode;
+
+enum BluetoothConnectionState
+{
+    UNPAIRED,
+    MASTER = 1,
+    SLAVE = 0
+};
+extern volatile BluetoothConnectionState btRole;
 
 enum RecordingMode
 {

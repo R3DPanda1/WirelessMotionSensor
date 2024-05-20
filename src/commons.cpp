@@ -5,6 +5,7 @@ volatile BluetoothMode currentBluetoothMode = MODE_DISCONNECTED;
 volatile RecordingMode currentRecordingMode = IDLE;
 volatile SyncMode currentSyncMode = MODE_IDLE;
 volatile SD_State currentSdState = REMOVED;
+volatile BluetoothConnectionState btRole = UNPAIRED;
 
 BNO055Data localBnoData = {0};
 BNO055Data remoteBnoData = {0};

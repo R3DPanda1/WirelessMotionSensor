@@ -1,14 +1,10 @@
 #include <rendering.h>
 
 // 3D Models
-Vertex cube_vertices[] = {{-5, -5, -5}, {5, -5, -5}, {5, 5, -5}, {-5, 5, -5}, {-5, -5, 5}, {5, -5, 5}, {5, 5, 5}, {-5, 5, 5}, {0, 0, 0}, {0, 0, -4}, {0.5, 0, -2.5}, {-0.5, 0, -2.5}, {0, -0.5, -2.5}, {0, 0.5, -2.5}, {0, -4, 0}, {0, -2.5, 0.5}, {0, -2.5, -0.5}, {-0.5, -2.5, 0}, {0.5, -2.5, 0}, {-4, 0, 0}, {-2.5, 0.5, 0}, {-2.5, -0.5, 0}, {-2.5, 0, -0.5}, {
-                                                                                                                                                                                                                                                                                                                                                                       -2.5,
-                                                                                                                                                                                                                                                                                                                                                                       0,
-                                                                                                                                                                                                                                                                                                                                                                       0.5,
-                                                                                                                                                                                                                                                                                                                                                                   }};
+Vertex cube_vertices[] = {{-5, -5, -5}, {5, -5, -5}, {5, 5, -5}, {-5, 5, -5}, {-5, -5, 5}, {5, -5, 5}, {5, 5, 5}, {-5, 5, 5}, {0, 0, 0}, {0, 0, -6}, {0.5, 0, -4}, {-0.5, 0, -4}, {0, -0.5, -4}, {0, 0.5, -4}, {0, -4, 0}, {0, -2.5, 0.5}, {0, -2.5, -0.5}, {-0.5, -2.5, 0}, {0.5, -2.5, 0}, {4, 0, 0}, {2.5, 0.5, 0}, {2.5, -0.5, 0}, {2.5, 0, -0.5}, {2.5, 0, 0.5}};
 Index cube_indices[] = {{0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4}, {0, 4}, {1, 5}, {2, 6}, {3, 7}, {8, 9}, {9, 10}, {9, 11}, {9, 12}, {9, 13}, {8, 14}, {14, 15}, {14, 16}, {14, 17}, {14, 18}, {8, 19}, {19, 20}, {19, 21}, {19, 22}, {19, 23}};
-Vertex device_vertices[] = {{-3.5, 2, 1}, {3.5, 2, 1}, {3.5, -2, 1}, {-3.5, -2, 1}, {-3.5, 2, -1}, {3.5, 2, -1}, {3.5, -2, -1}, {-3.5, -2, -1}, {1.5, 1, -1}, {-1.5, 1, -1}, {-1.5, -1, -1}, {1.5, -1, -1}};
-Index device_indices[] = {{0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4}, {0, 4}, {1, 5}, {2, 6}, {3, 7}, {8, 9}, {9, 10}, {10, 11}, {11, 8}};
+// Vertex device_vertices[] = {{-3.5, 2, 1}, {3.5, 2, 1}, {3.5, -2, 1}, {-3.5, -2, 1}, {-3.5, 2, -1}, {3.5, 2, -1}, {3.5, -2, -1}, {-3.5, -2, -1}, {1.5, 1, -1}, {-1.5, 1, -1}, {-1.5, -1, -1}, {1.5, -1, -1}};
+// Index device_indices[] = {{0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4}, {0, 4}, {1, 5}, {2, 6}, {3, 7}, {8, 9}, {9, 10}, {10, 11}, {11, 8}};
 
 Model cubeModel;
 Model deviceModel;
@@ -32,7 +28,7 @@ void renderTask(void *pvParameters)
   display.setTextColor(SH110X_WHITE); // Set color to white.
 
   cubeModel = createModel(cube_vertices, cube_indices, sizeof(cube_indices) / sizeof(cube_indices[0]));
-  deviceModel = createModel(device_vertices, device_indices, sizeof(device_indices) / sizeof(device_indices[0]));
+  //  deviceModel = createModel(device_vertices, device_indices, sizeof(device_indices) / sizeof(device_indices[0]));
 
   displayNotificationQueue = xQueueCreate(3, sizeof(char *));
   char *notification;
@@ -54,13 +50,25 @@ void renderTask(void *pvParameters)
       renderedBnoData = remoteBnoData;
     }
 
-    imu::Quaternion cubeAdjustedQuat;
+    imu::Quaternion reorientedQuat;
     imu::Vector<3> euler;
     switch (currentOperationMode)
     {
     case MODE_FUSION:
-      cubeAdjustedQuat = {renderedBnoData.orientation.w(), -renderedBnoData.orientation.x(), renderedBnoData.orientation.y(), renderedBnoData.orientation.z()};
-      drawRotatedObj(display, cubeModel, 3.5, SCREEN_WIDTH / 4 * 1, SCREEN_HEIGHT / 2, cubeAdjustedQuat);
+      if (currentBluetoothMode == MODE_CONNECTED)
+      {
+        // Calculate relative orientation between the two devices
+        imu::Quaternion relativeOrientation = remoteBnoData.orientation * localBnoData.orientation.conjugate();
+        // Adjust orientation
+        reorientedQuat = {relativeOrientation.w(), relativeOrientation.y(), relativeOrientation.x(), -relativeOrientation.z()};
+        display.setCursor(0, 10);
+      }
+      else
+      {
+        // Invert the orientation for object still in space
+        reorientedQuat = {renderedBnoData.orientation.w(), -renderedBnoData.orientation.x(), renderedBnoData.orientation.y(), renderedBnoData.orientation.z()};
+      }
+      drawRotatedObj(display, cubeModel, 3.5, SCREEN_WIDTH / 4 * 1, SCREEN_HEIGHT / 2, reorientedQuat);
       drawAccelGraph(display, renderedBnoData.linearAccel);
       break;
     case MODE_LEVEL:

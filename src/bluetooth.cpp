@@ -3,7 +3,6 @@
 BluetoothSerial SerialBT;
 TaskHandle_t bluetoothRXTaskHandle = NULL;
 TaskHandle_t bluetoothTXTaskHandle = NULL;
-BluetoothConnectionState btState = UNPAIRED;
 
 void sendStruct(BluetoothSerial &SerialBT, const char id, const void *data, size_t dataSize)
 {
@@ -29,7 +28,7 @@ void receiveStruct(BluetoothSerial &SerialBT)
         {
         case FusionData_ID:
         {
-            if (currentOperationMode != MODE_FUSION && btState == SLAVE)
+            if (currentOperationMode != MODE_FUSION && btRole == SLAVE)
             {
                 currentOperationMode = MODE_FUSION;
                 displayNotification("Fusion");
@@ -43,7 +42,7 @@ void receiveStruct(BluetoothSerial &SerialBT)
         }
         case TempData_ID:
         {
-            if (currentOperationMode != MODE_TEMP && btState == SLAVE)
+            if (currentOperationMode != MODE_TEMP && btRole == SLAVE)
             {
                 currentOperationMode = MODE_TEMP;
                 displayNotification("Temperature");
@@ -56,7 +55,7 @@ void receiveStruct(BluetoothSerial &SerialBT)
         }
         case LevelData_ID:
         {
-            if (currentOperationMode != MODE_LEVEL && btState == SLAVE)
+            if (currentOperationMode != MODE_LEVEL && btRole == SLAVE)
             {
                 currentOperationMode = MODE_LEVEL;
                 displayNotification("Spirit Level");
@@ -69,7 +68,7 @@ void receiveStruct(BluetoothSerial &SerialBT)
         }
         case SyncStart_ID:
         {
-            if (currentOperationMode != MODE_CLK_SYNC && btState == SLAVE)
+            if (currentOperationMode != MODE_CLK_SYNC && btRole == SLAVE)
             {
                 currentSyncMode = MODE_SYNC_START;
                 currentOperationMode = MODE_CLK_SYNC;
@@ -108,7 +107,7 @@ void unpairBT(BluetoothSerial &SerialBT)
     // SerialBT.flush();
     SerialBT.end();
     SerialBT.begin(bluetoothName, SLAVE); // Change bluetooth mode to slave
-    btState = UNPAIRED;
+    btRole = UNPAIRED;
     currentBluetoothMode = MODE_DISCONNECTED;
     digitalWrite(BT_LED_PIN, LOW);
 }
@@ -184,7 +183,7 @@ void bluetoothTXTask(void *pvParameters)
             {
                 SerialBT.end();
                 SerialBT.begin(bluetoothName, MASTER); // Change bluetooth mode to master
-                btState = MASTER;
+                btRole = MASTER;
                 // Try to connect to a device
                 currentBluetoothMode = MODE_CONNECTING;
                 if (SerialBT.connect(bluetoothName))

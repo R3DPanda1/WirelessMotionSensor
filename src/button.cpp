@@ -91,20 +91,27 @@ void buttonTask(void *pvParameters)
             }
             break;
         case MODE_SW:
-            switch (currentOperationMode)
+            if (btRole == SLAVE && currentBluetoothMode == MODE_CONNECTED)
             {
-            case MODE_FUSION:
-                currentOperationMode = MODE_TEMP;
-                displayNotification("Temperature");
-                break;
-            case MODE_TEMP:
-                currentOperationMode = MODE_LEVEL;
-                displayNotification("Spirit Level");
-                break;
-            case MODE_LEVEL:
-                currentOperationMode = MODE_FUSION;
-                displayNotification("Fusion");
-                break;
+                displayNotification("Not BT master");
+            }
+            else
+            {
+                switch (currentOperationMode)
+                {
+                case MODE_FUSION:
+                    currentOperationMode = MODE_TEMP;
+                    displayNotification("Temperature");
+                    break;
+                case MODE_TEMP:
+                    currentOperationMode = MODE_LEVEL;
+                    displayNotification("Spirit Level");
+                    break;
+                case MODE_LEVEL:
+                    currentOperationMode = MODE_FUSION;
+                    displayNotification("Fusion");
+                    break;
+                }
             }
             break;
         case CLK_SYNC_SW:
