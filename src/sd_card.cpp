@@ -6,6 +6,7 @@ TaskHandle_t csvGenTaskHandle;
 SemaphoreHandle_t csvSemaphore = NULL;
 String csvDataToWrite;
 uint8_t dataReady = 1;
+uint8_t csvGenTaskCreated = 0;
 
 void WriteFile(const char *path, const char *data)
 {
@@ -74,7 +75,7 @@ void csvGenTask(void *pvParameters)
 {
     for (;;)
     {
-        while (currentRecordingMode == SD_CARD)
+        while (currentRecordingMode == RECORDING)
         {
             String dataBuffer; // String to hold CSV formatted data
 
@@ -107,60 +108,158 @@ void csvGenTask(void *pvParameters)
 
 void sdCardTask(void *pvParameters)
 {
-    vTaskDelay(pdMS_TO_TICKS(1000)); // if SD card is initialized too early, esp32 reboots
-
-    if (!SD.begin(CS_PIN)) // check if SD card is present
-    {
-            displayNotification("No SD card detected");
-            vTaskDelete(NULL);
-    }
-    currentSdState = CONNECTED;
-    displayNotification("SD card connected");
-    while (currentRecordingMode != SD_CARD)
-    {
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
-
-    // Generate new filename
-    currentFilePath = generateNewFilename();
-
-    // Open new file
-    File myFile = SD.open(currentFilePath.c_str(), FILE_WRITE);
-    if (myFile)
-    {
-        myFile.print("Timestamp;AccX;AccY;AccZ;MagX;MagY;MagZ;GyroX;GyroY;GyroZ;QuatW;QuatX;QuatY;QuatZ;linAccX;linAccY;linAccZ;Temp;");  // Write header
-        myFile.println("Timestamp;AccX;AccY;AccZ;MagX;MagY;MagZ;GyroX;GyroY;GyroZ;QuatW;QuatX;QuatY;QuatZ;linAccX;linAccY;linAccZ;Temp"); // Write header
-        myFile.close();
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        displayNotification(currentFilePath.c_str());
-    }
-    else
-    {
-        displayNotification("Error creating file");
-        while (true)
-        {
-        };
-    }
-    csvSemaphore = xSemaphoreCreateBinary();
-    xTaskCreate(csvGenTask, "csvGeneratorTask", 4096, NULL, 4, &csvGenTaskHandle);
-    xSemaphoreGive(csvSemaphore);
-
+    vTaskDelay(pdMS_TO_TICKS(1000)); // if SD card is initialized too early, ESP32 crashes
+    pinMode(CD_PIN, INPUT_PULLUP);
     for (;;)
     {
         TickType_t xFrequency = pdMS_TO_TICKS(10);      // Convert 10 ms to ticks (100 Hz)
         TickType_t xLastWakeTime = xTaskGetTickCount(); // Get the current tick
-        if (dataReady == 1)
+        switch (currentSdState)
         {
-            if (xSemaphoreTake(csvSemaphore, portMAX_DELAY) == pdTRUE)
+        case REMOVED:
+            if (digitalRead(CD_PIN) == LOW) // check if inserted
             {
-                // write to SD card
-                WriteFile(currentFilePath.c_str(), csvDataToWrite.c_str());
-                csvDataToWrite.clear();
-                dataReady = 0;
-                xSemaphoreGive(csvSemaphore);
+                displayNotification("SD inserted");
+                currentSdState = INSERTED;
             }
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            break;
+        case INSERTED:
+            if (SD.begin(CS_PIN)) // check if SD card is working
+            {
+                currentSdState = CONNECTED;
+            }
+            else
+            {
+                displayNotification("Can't connect SD");
+                currentSdState = FAILED;
+            }
+            break;
+        case CONNECTED:
+            switch (currentRecordingMode)
+            {
+            case IDLE:
+                vTaskDelay(pdMS_TO_TICKS(100));
+                break;
+            case CREATE_FILE:
+            {
+                // Generate new filename
+                currentFilePath = generateNewFilename();
+
+                // Open new file
+                File myFile = SD.open(currentFilePath.c_str(), FILE_WRITE);
+                if (myFile)
+                {
+                    myFile.print("Timestamp;AccX;AccY;AccZ;MagX;MagY;MagZ;GyroX;GyroY;GyroZ;QuatW;QuatX;QuatY;QuatZ;linAccX;linAccY;linAccZ;Temp;");  // Write header
+                    myFile.println("Timestamp;AccX;AccY;AccZ;MagX;MagY;MagZ;GyroX;GyroY;GyroZ;QuatW;QuatX;QuatY;QuatZ;linAccX;linAccY;linAccZ;Temp"); // Write header
+                    myFile.close();
+                    vTaskDelay(pdMS_TO_TICKS(1000));
+                    displayNotification(currentFilePath.c_str());
+                    if (csvGenTaskCreated == 0) // avoid recreation
+                    {
+                        csvSemaphore = xSemaphoreCreateBinary();
+                        xTaskCreate(csvGenTask, "csvGeneratorTask", 4096, NULL, 4, &csvGenTaskHandle);
+                        xSemaphoreGive(csvSemaphore);
+                        csvGenTaskCreated = 1;
+                    }
+                }
+                else
+                {
+                    displayNotification("Error creating file");
+                    currentSdState = FAILED;
+                }
+                vTaskDelay(pdMS_TO_TICKS(100));
+                currentRecordingMode = RECORDING;
+                break;
+            }
+            case RECORDING:
+                if (dataReady == 1)
+                {
+                    if (digitalRead(CD_PIN) == LOW)
+                    {
+                        if (xSemaphoreTake(csvSemaphore, portMAX_DELAY) == pdTRUE)
+                        {
+                            // write to SD card
+                            WriteFile(currentFilePath.c_str(), csvDataToWrite.c_str());
+                            csvDataToWrite.clear();
+                            dataReady = 0;
+                            xSemaphoreGive(csvSemaphore);
+                        }
+                    }
+                    else
+                    {
+                        displayNotification("SD card removed!");
+                        currentSdState = REMOVED;
+                        currentRecordingMode = IDLE;
+                        SD.end();
+                    }
+                }
+                break;
+            }
+            if (digitalRead(CD_PIN) == HIGH)
+            {
+                currentSdState = REMOVED;
+                currentRecordingMode = IDLE;
+                SD.end();
+                displayNotification("SD card removed!");
+            }
+            break;
+        case FAILED:
+            if (digitalRead(CD_PIN) == HIGH)
+            {
+                currentSdState = REMOVED;
+                currentRecordingMode = IDLE;
+                SD.end();
+            }
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            break;
         }
-        // vTaskDelay(pdMS_TO_TICKS(5));
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }
+    /*
+        while (digitalRead(CD_PIN) == HIGH)
+        {
+            vTaskDelay(pdMS_TO_TICKS(1000));
+        }
+        displayNotification("SD inserted");
+        delay(1000);
+        if (!SD.begin(CS_PIN)) // check if SD card is present
+        {
+            displayNotification("Can't connect SD");
+        }
+        currentSdState = CONNECTED;
+        displayNotification("SD card connected");
+        while (currentRecordingMode != SD_CARD)
+        {
+            vTaskDelay(pdMS_TO_TICKS(1000));
+        }
+
+        for (;;)
+        {
+            TickType_t xFrequency = pdMS_TO_TICKS(10);      // Convert 10 ms to ticks (100 Hz)
+            TickType_t xLastWakeTime = xTaskGetTickCount(); // Get the current tick
+            if (digitalRead(CD_PIN) == LOW)
+            {
+                if (dataReady == 1)
+                {
+                    if (xSemaphoreTake(csvSemaphore, portMAX_DELAY) == pdTRUE)
+                    {
+                        // write to SD card
+                        WriteFile(currentFilePath.c_str(), csvDataToWrite.c_str());
+                        csvDataToWrite.clear();
+                        dataReady = 0;
+                        xSemaphoreGive(csvSemaphore);
+                    }
+                }
+            }
+            else
+            {
+                currentSdState = REMOVED;
+                displayNotification("SD card removed!");
+                break;
+            }
+            // vTaskDelay(pdMS_TO_TICKS(5));
+            vTaskDelayUntil(&xLastWakeTime, xFrequency);
+        }
+        */
 }

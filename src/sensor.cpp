@@ -115,8 +115,6 @@ void sensorTask(void *pvParameters)
             case MODE_HIGH_G_DETECTED:
             {
                 // check if the remote device was synced roughly at the same time
-                Serial.println(remoteBnoData.timestamp);
-                Serial.println(syncedMillis());
                 unsigned long localTime = remoteBnoData.timestamp;
                 unsigned long remoteTime = syncedMillis();
                 unsigned long timeDiff;

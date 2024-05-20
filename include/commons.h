@@ -39,8 +39,9 @@ extern volatile SyncMode currentSyncMode;
 
 enum SD_State
 {
-    NO_SD,
+    REMOVED,
     INSERTED,
+    FAILED,
     CONNECTED
 };
 extern volatile SD_State currentSdState;
@@ -110,8 +111,9 @@ extern volatile BluetoothMode currentBluetoothMode;
 
 enum RecordingMode
 {
-    NONE,
-    SD_CARD
+    IDLE,
+    CREATE_FILE,
+    RECORDING
 };
 extern volatile RecordingMode currentRecordingMode;
 

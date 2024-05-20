@@ -5,7 +5,8 @@
 #include <SPI.h>
 #include <commons.h>
 
-#define CS_PIN 5
+#define CS_PIN 5 //Chip select pin
+#define CD_PIN 14 //SD card detect pin
 
 #define CSV_BUFFER_SIZE 50 // at 100Hz = 2 writes per second to SD card
 

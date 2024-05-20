@@ -55,16 +55,20 @@ void buttonTask(void *pvParameters)
         case REC_SW:
             if (currentSdState == CONNECTED)
             {
-                if (currentRecordingMode == NONE)
+                if (currentRecordingMode == IDLE)
                 {
                     displayNotification("Recording...");
-                    currentRecordingMode = SD_CARD;
+                    currentRecordingMode = CREATE_FILE;
                 }
                 else
                 {
                     displayNotification("Recording stopped");
-                    currentRecordingMode = NONE;
+                    currentRecordingMode = IDLE;
                 }
+            }
+            else if (currentSdState == FAILED)
+            {
+                displayNotification("Can't connect SD");
             }
             else
             {

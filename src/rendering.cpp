@@ -174,12 +174,17 @@ void renderTask(void *pvParameters)
       renderedBnoData = remoteBnoData;
       display.drawBitmap(0, 0, btSprite, 8, sizeof(btSprite), SH110X_INVERSE);
     }
+
     if (currentSdState == CONNECTED)
     {
-      if (currentRecordingMode != SD_CARD || TOGGLE_200MS_STATE)
+      if (currentRecordingMode != RECORDING || TOGGLE_200MS_STATE)
       {
         display.drawBitmap(0, SCREEN_HEIGHT - sizeof(sdSprite), sdSprite, 8, sizeof(sdSprite), SH110X_INVERSE);
       }
+    }
+    else if (currentSdState == FAILED)
+    {
+      display.drawBitmap(0, SCREEN_HEIGHT - sizeof(sdFailedSprite), sdFailedSprite, 8, sizeof(sdSprite), SH110X_INVERSE);
     }
 
     // Draw battery level icon

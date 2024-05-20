@@ -31,7 +31,7 @@ struct Model
   uint8_t numIndices;
 };
 
-const uint8_t btSprite[] = {
+const uint8_t btSprite[] PROGMEM = {
     0b00111100,
     0b01101110,
     0b11100111,
@@ -52,7 +52,21 @@ const uint8_t btSprite[] = {
 const unsigned char batterySprite[] PROGMEM = {
     0xff, 0xf0, 0x80, 0x10, 0x80, 0x18, 0x80, 0x18, 0x80, 0x18, 0x80, 0x10, 0xff, 0xf0};
 
-const uint8_t sdSprite[] = {
+const uint8_t sdFailedSprite[] PROGMEM = {
+    0b11111110,
+    0b10101010,
+    0b10101010,
+    0b10101011,
+    0b11111111,
+    0b10111010,
+    0b10010011,
+    0b11000111,
+    0b11000111,
+    0b10010011,
+    0b10111011,
+    0b11111111};
+
+const uint8_t sdSprite[] PROGMEM = {
     0b11111110,
     0b10101010,
     0b10101010,
@@ -66,7 +80,7 @@ const uint8_t sdSprite[] = {
     0b10010011,
     0b11111111};
 
-const uint8_t triAxisSprite[] = {
+const uint8_t triAxisSprite[] PROGMEM = {
     0b00000010, 0b00000111, 0b00000010, 0b10001010, 0b01010010, 0b00100010, 0b01010010, 0b10001010,
     0b00000010, 0b00001111, 0b00000010, 0b00000010, 0b00000010, 0b00000010, 0b00000010, 0b00000010,
     0b00000010, 0b00000010, 0b00000010, 0b00000000, 0b00000010, 0b00000111, 0b00000010, 0b10001010,
