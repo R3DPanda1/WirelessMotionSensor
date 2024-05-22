@@ -37,7 +37,8 @@ void receiveStruct(BluetoothSerial &SerialBT)
             memcpy(&receivedData, buffer + 1, sizeof(receivedData));
             remoteBnoData.timestamp = receivedData.timestamp;
             remoteBnoData.linearAccel = receivedData.linearAccel;
-            remoteBnoData.rotation = receivedData.orientation;
+            receivedData.rotation.normalize(); //make sure recieved quaternion is notmalized to prevent crashes
+            remoteBnoData.rotation = receivedData.rotation;
             break;
         }
         case TempData_ID:
@@ -63,7 +64,8 @@ void receiveStruct(BluetoothSerial &SerialBT)
             LevelData receivedData;
             memcpy(&receivedData, buffer + 1, sizeof(receivedData));
             remoteBnoData.timestamp = receivedData.timestamp;
-            remoteBnoData.rotation = receivedData.orientation;
+            receivedData.rotation.normalize(); //make sure recieved quaternion is notmalized to prevent crashes
+            remoteBnoData.rotation = receivedData.rotation;
             break;
         }
         case SyncStart_ID:

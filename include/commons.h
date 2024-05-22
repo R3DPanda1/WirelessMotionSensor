@@ -51,7 +51,7 @@ struct FusionData
 {
     unsigned long timestamp;
     imu::Vector<3> linearAccel;
-    imu::Quaternion orientation;
+    imu::Quaternion rotation;
 };
 
 const char SyncStart_ID = 'S';
@@ -60,7 +60,7 @@ const char LevelData_ID = 'L';
 struct LevelData
 {
     unsigned long timestamp;
-    imu::Quaternion orientation;
+    imu::Quaternion rotation;
 };
 
 const char TempData_ID = 'T';

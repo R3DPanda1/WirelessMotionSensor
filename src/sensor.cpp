@@ -41,7 +41,7 @@ void configureHighGInterrupt()
     writeBNO(INT_MASK_ADDR, 0b00100000);
     writeBNO(INT_ADDR, 0b00100000);
 
-    writeBNO(ACCEL_INT_SETTINGS_ADDR, 0b01000000);
+    writeBNO(ACCEL_INT_SETTINGS_ADDR, 0b11100000);
 
     writeBNO(ACCEL_HIGH_G_THRES_ADDR, 80);
     writeBNO(ACCEL_HIGH_G_DURN_ADDR, 0);

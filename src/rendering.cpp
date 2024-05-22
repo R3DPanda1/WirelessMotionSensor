@@ -1,7 +1,7 @@
 #include <rendering.h>
 
 // 3D Models
-Vertex cube_vertices[] = {{-5, -5, -5}, {5, -5, -5}, {5, 5, -5}, {-5, 5, -5}, {-5, -5, 5}, {5, -5, 5}, {5, 5, 5}, {-5, 5, 5}, {0, 0, 0}, {0, 0, -6}, {0.5, 0, -4}, {-0.5, 0, -4}, {0, -0.5, -4}, {0, 0.5, -4}, {0, -4, 0}, {0, -2.5, 0.5}, {0, -2.5, -0.5}, {-0.5, -2.5, 0}, {0.5, -2.5, 0}, {4, 0, 0}, {2.5, 0.5, 0}, {2.5, -0.5, 0}, {2.5, 0, -0.5}, {2.5, 0, 0.5}};
+Vertex cube_vertices[] = {{-5, -5, -5}, {5, -5, -5}, {5, 5, -5}, {-5, 5, -5}, {-5, -5, 5}, {5, -5, 5}, {5, 5, 5}, {-5, 5, 5}, {0, 0, 0}, {0, 0, -7}, {1, 0, -4}, {-1, 0, -4}, {0, -1, -4}, {0, 1, -4}, {0, -4, 0}, {0, -2.5, 0.5}, {0, -2.5, -0.5}, {-0.5, -2.5, 0}, {0.5, -2.5, 0}, {4, 0, 0}, {2.5, 0.5, 0}, {2.5, -0.5, 0}, {2.5, 0, -0.5}, {2.5, 0, 0.5}};
 Index cube_indices[] = {{0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4}, {0, 4}, {1, 5}, {2, 6}, {3, 7}, {8, 9}, {9, 10}, {9, 11}, {9, 12}, {9, 13}, {8, 14}, {14, 15}, {14, 16}, {14, 17}, {14, 18}, {8, 19}, {19, 20}, {19, 21}, {19, 22}, {19, 23}};
 // Vertex device_vertices[] = {{-3.5, 2, 1}, {3.5, 2, 1}, {3.5, -2, 1}, {-3.5, -2, 1}, {-3.5, 2, -1}, {3.5, 2, -1}, {3.5, -2, -1}, {-3.5, -2, -1}, {1.5, 1, -1}, {-1.5, 1, -1}, {-1.5, -1, -1}, {1.5, -1, -1}};
 // Index device_indices[] = {{0, 1}, {1, 2}, {2, 3}, {3, 0}, {4, 5}, {5, 6}, {6, 7}, {7, 4}, {0, 4}, {1, 5}, {2, 6}, {3, 7}, {8, 9}, {9, 10}, {10, 11}, {11, 8}};
@@ -50,47 +50,42 @@ void renderTask(void *pvParameters)
       renderedBnoData = remoteBnoData;
     }
 
-    imu::Quaternion rerotatedQuat;
+    imu::Quaternion rerotatedQuat = {1, 0, 0, 0};
     imu::Vector<3> euler;
     switch (currentOperationMode)
     {
     case MODE_FUSION:
       if (currentBluetoothMode == MODE_CONNECTED)
       {
-        // Calculate relative orientation between the two devices
-        //imu::Quaternion quat1 = {localBnoData.rotation.w(), localBnoData.rotation.x(), -localBnoData.rotation.y(), -localBnoData.rotation.z()};
-        //imu::Quaternion quat2 = {remoteBnoData.rotation.w(), remoteBnoData.rotation.x(), -remoteBnoData.rotation.y(), -remoteBnoData.rotation.z()};
-        //rerotatedQuat = quat2 * quat1.conjugate();
-        // Adjust orientation
-        rerotatedQuat = {renderedBnoData.rotation.w(), renderedBnoData.rotation.x(), -renderedBnoData.rotation.y(), -renderedBnoData.rotation.z()};
-        // reorientedQuat = {relativeOrientation.w(), relativeOrientation.y(), relativeOrientation.x(), -relativeOrientation.z()};
-        //imu::Vector<3> test = renderedBnoData.rotation.toEuler();
-        //display.setCursor(0, 20);
-        //display.println(localBnoData.rotation.x());
-        //display.println(localBnoData.rotation.y());
-        //display.println(localBnoData.rotation.z());
+        // Some of the axes need inverting to achieve desired behaviour. These were found by trial and error
+        imu::Quaternion quat1 = {localBnoData.rotation.w(), -localBnoData.rotation.x(), localBnoData.rotation.y(), localBnoData.rotation.z()};
+        imu::Quaternion quat2 = {remoteBnoData.rotation.w(), remoteBnoData.rotation.x(), -remoteBnoData.rotation.y(), -remoteBnoData.rotation.z()};
+        // Calculate rotation of remote device from the point of view of the local device
+        rerotatedQuat = quat1 * quat2;
       }
       else
       {
+        // Make a rotation quaternion to rotate the cube so the long axis faces north
         imu::Quaternion appliedRotation = {0.5, 0.5, -0.5, -0.5}; // calculated using https://quaternions.online/
-        // Invert the orientation for still in space looking cube
+        // Invert the orientation to achieve the effect of "still in space cube"
         rerotatedQuat = {renderedBnoData.rotation.w(), -renderedBnoData.rotation.x(), renderedBnoData.rotation.y(), renderedBnoData.rotation.z()};
         rerotatedQuat = rerotatedQuat * appliedRotation; // apply orientation to face Z axis to north
       }
+
       drawRotatedObj(display, cubeModel, 3.5, SCREEN_WIDTH / 4 * 1, SCREEN_HEIGHT / 2, rerotatedQuat);
+      // Draw the cube model using the rerotated Quaternion
       drawAccelGraph(display, renderedBnoData.linearAccel);
       break;
     case MODE_LEVEL:
     {
+      //Convert rotation to to yaw, pitch, roll
       euler = renderedBnoData.rotation.toEuler();
 
-      // Euler angles in radians, convert to degrees
-      float yaw = euler.x() * 180.0 / M_PI;
-      float roll = euler.y() * 180.0 / M_PI;
-      float pitch = euler.z() * 180.0 / M_PI;
+      // Euler angles are in radians, convert to degrees
+      euler.toDegrees();
 
       // Calculate the tilt
-      int tilt = sqrt(pitch * pitch + roll * roll);
+      int tilt = sqrt(euler.z() * euler.z() + euler.y() * euler.y());
 
       // Calculate positions for spirit level circles
       int centerX = SCREEN_WIDTH / 2;
@@ -98,28 +93,28 @@ void renderTask(void *pvParameters)
       int radius = 30;
       int maxOffset = 90 + radius;
 
-      // Calculate offsets based on pitch and roll
-      int offsetX = map(roll, 90, -90, -maxOffset, maxOffset);
-      int offsetY = map(pitch, 90, -90, -maxOffset, maxOffset);
+      // Calculate offsets based on roll and yaw
+      int offsetX = map(euler.y(), 90, -90, -maxOffset, maxOffset);
+      int offsetY = map(euler.z(), 90, -90, -maxOffset, maxOffset);
       int16_t x1, y1;
       uint16_t textWidth, textHeight;
       display.setTextSize(2);
       display.setTextColor(SH110X_INVERSE);
 
-      if (pitch > 45)
+      if (euler.z() > 45) //roll is more than 45 degrees, start drawing leveling line
       {
-        offsetX = map(roll, 26, -26, -centerY, centerY); // not exact. 26 is chosen by trial and error
-        offsetY = map(pitch, 0, 180, -SCREEN_HEIGHT, SCREEN_HEIGHT);
+        offsetX = map(euler.y(), 26, -26, -centerY, centerY); // not exact. 26 is chosen by trial and error
+        offsetY = map(euler.z(), 0, 180, -SCREEN_HEIGHT, SCREEN_HEIGHT);
         // draw horizontal level quadrangle using triangles
-        if (roll < 80 && roll > -80) // triangle render method breaks for values outside this range
+        if (euler.y() < 80 && euler.y() > -80) // triangle render method breaks for values outside this range
         {
           display.fillTriangle(centerX, SCREEN_HEIGHT, 0, centerY - offsetX - offsetY, SCREEN_WIDTH, centerY + offsetX - offsetY, SH110X_WHITE);
           display.fillTriangle(centerX, SCREEN_HEIGHT, 0, centerY - offsetX - offsetY, 0, SCREEN_HEIGHT, SH110X_WHITE);
           display.fillTriangle(centerX, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, centerY + offsetX - offsetY, SH110X_WHITE);
         }
-        display.getTextBounds(String((int)roll), 0, 0, &x1, &y1, &textWidth, &textHeight);
+        display.getTextBounds(String((int)euler.y()), 0, 0, &x1, &y1, &textWidth, &textHeight);
         display.setCursor(centerX - textWidth / 2, centerY - textHeight / 2);
-        display.print((int)roll);
+        display.print((int)euler.y());
       }
       else
       {
