@@ -170,12 +170,12 @@ void readSensor()
     {
     case MODE_FUSION:
         localBnoData.timestamp = syncedMillis();
-        localBnoData.orientation = bno.getQuat();
+        localBnoData.rotation = bno.getQuat();
         localBnoData.linearAccel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
         break;
     case MODE_LEVEL:
         localBnoData.timestamp = syncedMillis();
-        localBnoData.orientation = bno.getQuat();
+        localBnoData.rotation = bno.getQuat();
         // localBnoData.linearAccel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
         break;
     case MODE_TEMP:

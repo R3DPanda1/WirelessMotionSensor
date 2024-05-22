@@ -37,7 +37,7 @@ void receiveStruct(BluetoothSerial &SerialBT)
             memcpy(&receivedData, buffer + 1, sizeof(receivedData));
             remoteBnoData.timestamp = receivedData.timestamp;
             remoteBnoData.linearAccel = receivedData.linearAccel;
-            remoteBnoData.orientation = receivedData.orientation;
+            remoteBnoData.rotation = receivedData.orientation;
             break;
         }
         case TempData_ID:
@@ -63,7 +63,7 @@ void receiveStruct(BluetoothSerial &SerialBT)
             LevelData receivedData;
             memcpy(&receivedData, buffer + 1, sizeof(receivedData));
             remoteBnoData.timestamp = receivedData.timestamp;
-            remoteBnoData.orientation = receivedData.orientation;
+            remoteBnoData.rotation = receivedData.orientation;
             break;
         }
         case SyncStart_ID:
@@ -104,7 +104,7 @@ void unpairBT(BluetoothSerial &SerialBT)
 {
     displayNotification("Disconnected!"); //show message early for quick response
     SerialBT.disconnect();
-    // SerialBT.flush();
+    SerialBT.flush();
     SerialBT.end();
     SerialBT.begin(bluetoothName, SLAVE); // Change bluetooth mode to slave
     btRole = UNPAIRED;
@@ -152,7 +152,7 @@ void bluetoothTXTask(void *pvParameters)
             {
             case MODE_FUSION:
             {
-                FusionData dataToSend = {localBnoData.timestamp, localBnoData.linearAccel, localBnoData.orientation};
+                FusionData dataToSend = {localBnoData.timestamp, localBnoData.linearAccel, localBnoData.rotation};
                 sendStruct(SerialBT, FusionData_ID, &dataToSend, sizeof(dataToSend));
                 break;
             }
@@ -165,7 +165,7 @@ void bluetoothTXTask(void *pvParameters)
             }
             case MODE_LEVEL:
             {
-                LevelData dataToSend = {localBnoData.timestamp, localBnoData.orientation};
+                LevelData dataToSend = {localBnoData.timestamp, localBnoData.rotation};
                 sendStruct(SerialBT, LevelData_ID, &dataToSend, sizeof(dataToSend));
                 break;
             }

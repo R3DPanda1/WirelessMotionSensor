@@ -64,7 +64,7 @@ String formatSensorData(BNO055Data &data)
              vectorToCsvString(data.accelerometer, accBuffer),
              vectorToCsvString(data.magnetometer, magBuffer),
              vectorToCsvString(data.gyroscope, gyroBuffer),
-             data.orientation.w(), data.orientation.x(), data.orientation.y(), data.orientation.z(),
+             data.rotation.w(), data.rotation.x(), data.rotation.y(), data.rotation.z(),
              vectorToCsvString(data.linearAccel, laccBuffer),
              data.temperature);
 

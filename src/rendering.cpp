@@ -50,7 +50,7 @@ void renderTask(void *pvParameters)
       renderedBnoData = remoteBnoData;
     }
 
-    imu::Quaternion reorientedQuat;
+    imu::Quaternion rerotatedQuat;
     imu::Vector<3> euler;
     switch (currentOperationMode)
     {
@@ -58,22 +58,31 @@ void renderTask(void *pvParameters)
       if (currentBluetoothMode == MODE_CONNECTED)
       {
         // Calculate relative orientation between the two devices
-        imu::Quaternion relativeOrientation = remoteBnoData.orientation * localBnoData.orientation.conjugate();
+        //imu::Quaternion quat1 = {localBnoData.rotation.w(), localBnoData.rotation.x(), -localBnoData.rotation.y(), -localBnoData.rotation.z()};
+        //imu::Quaternion quat2 = {remoteBnoData.rotation.w(), remoteBnoData.rotation.x(), -remoteBnoData.rotation.y(), -remoteBnoData.rotation.z()};
+        //rerotatedQuat = quat2 * quat1.conjugate();
         // Adjust orientation
-        reorientedQuat = {relativeOrientation.w(), relativeOrientation.y(), relativeOrientation.x(), -relativeOrientation.z()};
-        display.setCursor(0, 10);
+        rerotatedQuat = {renderedBnoData.rotation.w(), renderedBnoData.rotation.x(), -renderedBnoData.rotation.y(), -renderedBnoData.rotation.z()};
+        // reorientedQuat = {relativeOrientation.w(), relativeOrientation.y(), relativeOrientation.x(), -relativeOrientation.z()};
+        //imu::Vector<3> test = renderedBnoData.rotation.toEuler();
+        //display.setCursor(0, 20);
+        //display.println(localBnoData.rotation.x());
+        //display.println(localBnoData.rotation.y());
+        //display.println(localBnoData.rotation.z());
       }
       else
       {
-        // Invert the orientation for object still in space
-        reorientedQuat = {renderedBnoData.orientation.w(), -renderedBnoData.orientation.x(), renderedBnoData.orientation.y(), renderedBnoData.orientation.z()};
+        imu::Quaternion appliedRotation = {0.5, 0.5, -0.5, -0.5}; // calculated using https://quaternions.online/
+        // Invert the orientation for still in space looking cube
+        rerotatedQuat = {renderedBnoData.rotation.w(), -renderedBnoData.rotation.x(), renderedBnoData.rotation.y(), renderedBnoData.rotation.z()};
+        rerotatedQuat = rerotatedQuat * appliedRotation; // apply orientation to face Z axis to north
       }
-      drawRotatedObj(display, cubeModel, 3.5, SCREEN_WIDTH / 4 * 1, SCREEN_HEIGHT / 2, reorientedQuat);
+      drawRotatedObj(display, cubeModel, 3.5, SCREEN_WIDTH / 4 * 1, SCREEN_HEIGHT / 2, rerotatedQuat);
       drawAccelGraph(display, renderedBnoData.linearAccel);
       break;
     case MODE_LEVEL:
     {
-      euler = renderedBnoData.orientation.toEuler();
+      euler = renderedBnoData.rotation.toEuler();
 
       // Euler angles in radians, convert to degrees
       float yaw = euler.x() * 180.0 / M_PI;

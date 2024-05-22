@@ -82,7 +82,7 @@ struct BNO055Data
     imu::Vector<3> accelerometer;
     imu::Vector<3> magnetometer;
     imu::Vector<3> gyroscope;
-    imu::Quaternion orientation;
+    imu::Quaternion rotation;
     imu::Vector<3> linearAccel;
     int8_t temperature;
 };
