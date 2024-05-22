@@ -117,10 +117,17 @@ void buttonTask(void *pvParameters)
         case CLK_SYNC_SW:
             if (currentBluetoothMode == MODE_CONNECTED)
             {
-                if (currentOperationMode != MODE_CLK_SYNC)
+                if (btRole == MASTER)
                 {
-                    currentSyncMode = MODE_SYNC_START;
-                    currentOperationMode = MODE_CLK_SYNC;
+                    if (currentOperationMode != MODE_CLK_SYNC)
+                    {
+                        currentSyncMode = MODE_SYNC_START;
+                        currentOperationMode = MODE_CLK_SYNC;
+                    }
+                }
+                else
+                {
+                    displayNotification("Not BT master");
                 }
             }
             else
