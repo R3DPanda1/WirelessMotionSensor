@@ -114,26 +114,29 @@ void sensorTask(void *pvParameters)
                 break;
             case MODE_HIGH_G_DETECTED:
             {
-                // check if the remote device was synced roughly at the same time
-                unsigned long localTime = remoteBnoData.timestamp;
-                unsigned long remoteTime = syncedMillis();
-                unsigned long timeDiff;
-                if (localTime > remoteTime)
+                if (btRole == MASTER)
                 {
-                    timeDiff = localTime - remoteTime;
-                }
-                else
-                {
-                    timeDiff = remoteTime - localTime;
-                }
-                if (timeDiff < SYNC_BT_TOLERANCE)
-                {
-                    currentSyncMode = MODE_SYNC_SUCCESS;
-                }
-                else
-                {
-                    displayNotification("Try again!");
-                    currentSyncMode = MODE_RETRY;
+                    // check if the remote device was synced roughly at the same time
+                    unsigned long localTime = remoteBnoData.timestamp;
+                    unsigned long remoteTime = syncedMillis();
+                    unsigned long timeDiff;
+                    if (localTime > remoteTime)
+                    {
+                        timeDiff = localTime - remoteTime;
+                    }
+                    else
+                    {
+                        timeDiff = remoteTime - localTime;
+                    }
+                    if (timeDiff < SYNC_BT_TOLERANCE)
+                    {
+                        currentSyncMode = MODE_SYNC_SUCCESS;
+                    }
+                    else
+                    {
+                        displayNotification("Try again!");
+                        currentSyncMode = MODE_RETRY;
+                    }
                 }
                 break;
             }
