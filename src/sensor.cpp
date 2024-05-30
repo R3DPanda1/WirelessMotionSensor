@@ -84,68 +84,89 @@ void sensorTask(void *pvParameters)
     {
         if (currentOperationMode == MODE_CLK_SYNC)
         {
-            if (currentSyncMode == MODE_SYNC_START)
+            if (currentBluetoothMode == MODE_CONNECTED)
             {
-                displayNotification("Sync started");
-                configureHighGInterrupt();
-                attachInterrupt(HIGH_G_INT_PIN, clk_sync_isr, RISING);
-                sync_timeout_time = millis() + 5000;
-                currentSyncMode = MODE_WAIT_HIGH_G;
-            }
-            if (currentSyncMode == MODE_RETRY)
-            {
-                clearInterrupt();
-                attachInterrupt(HIGH_G_INT_PIN, clk_sync_isr, RISING);
-                sync_timeout_time = millis() + 5000;
-                currentSyncMode = MODE_WAIT_HIGH_G;
-            }
-            // Wait for interrupt with a timeout
-            while (currentSyncMode == MODE_WAIT_HIGH_G && millis() < sync_timeout_time)
-            {
-                delay(100);
-            }
-            switch (currentSyncMode)
-            {
-            case MODE_WAIT_HIGH_G:
-                displayNotification("Sync failed");
-                currentSyncMode = MODE_IDLE;
-                detachInterrupt(HIGH_G_INT_PIN);
-                currentOperationMode = MODE_FUSION;
-                break;
-            case MODE_HIGH_G_DETECTED:
-            {
-                if (btRole == MASTER)
+                if (currentSyncMode == MODE_SYNC_START)
                 {
-                    // check if the remote device was synced roughly at the same time
-                    unsigned long localTime = remoteBnoData.timestamp;
-                    unsigned long remoteTime = syncedMillis();
-                    unsigned long timeDiff;
-                    if (localTime > remoteTime)
+                    displayNotification("Sync started");
+                    configureHighGInterrupt();
+                    while(digitalRead(HIGH_G_INT_PIN)==HIGH){
+                        clearInterrupt();
+                        delay(100);
+                    }
+                    attachInterrupt(HIGH_G_INT_PIN, clk_sync_isr, RISING);
+                    sync_timeout_time = millis() + SYNC_TIMEOUT;
+                    currentSyncMode = MODE_WAIT_HIGH_G;
+                }
+                if (currentSyncMode == MODE_RETRY)
+                {
+                    clearInterrupt();
+                    while(digitalRead(HIGH_G_INT_PIN)==HIGH){
+                        clearInterrupt();
+                        delay(100);
+                    }
+                    attachInterrupt(HIGH_G_INT_PIN, clk_sync_isr, RISING);
+                    sync_timeout_time = millis() + SYNC_TIMEOUT;
+                    currentSyncMode = MODE_WAIT_HIGH_G;
+                }
+                // Wait for interrupt with a timeout
+                while (currentSyncMode == MODE_WAIT_HIGH_G && millis() < sync_timeout_time)
+                {
+                    delay(100);
+                }
+                switch (currentSyncMode)
+                {
+                case MODE_WAIT_HIGH_G: // Still waiting after timeout
+                    displayNotification("Sync failed");
+                    currentSyncMode = MODE_IDLE;
+                    detachInterrupt(HIGH_G_INT_PIN);
+                    currentOperationMode = MODE_FUSION;
+                    break;
+                case MODE_HIGH_G_DETECTED:
+                {
+                    if (btRole == MASTER)
                     {
-                        timeDiff = localTime - remoteTime;
+                        // check if the remote device was synced roughly at the same time
+                        unsigned long remoteTime = remoteBnoData.timestamp;
+                        unsigned long localTime = syncedMillis();
+                        unsigned long timeDiff;
+                        if (localTime > remoteTime)
+                        {
+                            timeDiff = localTime - remoteTime;
+                        }
+                        else
+                        {
+                            timeDiff = remoteTime - localTime;
+                        }
+                        if (timeDiff < SYNC_BT_TOLERANCE)
+                        {
+                            currentSyncMode = MODE_SYNC_SUCCESS;
+                        }
+                        else
+                        {
+                            displayNotification("Try again!");
+                            currentSyncMode = MODE_RETRY;
+                        }
                     }
                     else
                     {
-                        timeDiff = remoteTime - localTime;
-                    }
-                    if (timeDiff < SYNC_BT_TOLERANCE)
-                    {
-                        currentSyncMode = MODE_SYNC_SUCCESS;
-                    }
-                    else
-                    {
-                        displayNotification("Try again!");
+                        displayNotification("Hit!");
                         currentSyncMode = MODE_RETRY;
                     }
+                    break;
                 }
-                break;
+                case MODE_SYNC_SUCCESS:
+                    displayNotification("Synced!");
+                    currentSyncMode = MODE_IDLE;
+                    detachInterrupt(HIGH_G_INT_PIN);
+                    currentOperationMode = MODE_FUSION;
+                    break;
+                }
             }
-            case MODE_SYNC_SUCCESS:
-                displayNotification("Synced!");
-                currentSyncMode = MODE_IDLE;
+            else
+            {
+                currentOperationMode == MODE_FUSION;
                 detachInterrupt(HIGH_G_INT_PIN);
-                currentOperationMode = MODE_FUSION;
-                break;
             }
         }
         else
@@ -174,11 +195,13 @@ void readSensor()
     case MODE_FUSION:
         localBnoData.timestamp = syncedMillis();
         localBnoData.rotation = bno.getQuat();
+        localBnoData.rotation.normalize(); // make sure recieved quaternion is notmalized to prevent crashes
         localBnoData.linearAccel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
         break;
     case MODE_LEVEL:
         localBnoData.timestamp = syncedMillis();
         localBnoData.rotation = bno.getQuat();
+        localBnoData.rotation.normalize(); // make sure recieved quaternion is notmalized to prevent crashes
         // localBnoData.linearAccel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
         break;
     case MODE_TEMP:

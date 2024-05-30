@@ -134,6 +134,7 @@ void bluetoothRXTask(void *pvParameters)
 void bluetoothTXTask(void *pvParameters)
 {
     BluetoothSerial SerialBT = (BluetoothSerial &)pvParameters;
+    SerialBT.begin(bluetoothName, false);
     pinMode(BT_LED_PIN, OUTPUT);
     digitalWrite(BT_LED_PIN, LOW);
     for (;;)

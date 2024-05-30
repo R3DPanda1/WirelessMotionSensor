@@ -12,7 +12,6 @@ BNO055Data remoteBnoData = {0};
 
 unsigned long millis_sync_offset = 0;
 
-
 unsigned long syncedMillis()
 {
   return millis() - millis_sync_offset;
@@ -32,7 +31,10 @@ void displayNotification(const char *message)
 
 void IRAM_ATTR clk_sync_isr()
 {
-  millis_sync_offset = millis();
-  currentSyncMode = MODE_HIGH_G_DETECTED;
-  detachInterrupt(HIGH_G_INT_PIN);
+  if (currentOperationMode == MODE_CLK_SYNC)
+  {
+    millis_sync_offset = millis();
+    currentSyncMode = MODE_HIGH_G_DETECTED;
+    detachInterrupt(HIGH_G_INT_PIN);
+  }
 }

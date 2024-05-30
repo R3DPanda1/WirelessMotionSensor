@@ -26,6 +26,8 @@ void displayNotification(const char *message);
 void IRAM_ATTR clk_sync_isr();
 unsigned long syncedMillis();
 
+#define SYNC_TIMEOUT 10000 // amount of time to wait for time syncing after last detected hit (in ms)
+
 enum SyncMode
 {
     MODE_IDLE,
