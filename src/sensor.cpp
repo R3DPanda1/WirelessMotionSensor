@@ -2,6 +2,7 @@
 
 TaskHandle_t sensorTaskHandle = NULL;
 Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28);
+bool calibrationSaved = false;
 
 void readSensor();
 
@@ -27,6 +28,38 @@ uint8_t readBNO(uint8_t reg)
         value = Wire.read(); // Read the byte
     }
     return value;
+}
+
+void saveCalibrationData()
+{
+    uint8_t calData[22];
+    // Read calibration data
+    bno.getSensorOffsets(calData);
+
+    // Save calibration data
+    for (int i = 0; i < 22; i++)
+    {
+        EEPROM.write(i, calData[i]);
+    }
+
+    // Commit changes to EEPROM
+    EEPROM.commit();
+    //displayNotification("Calibration saved");
+}
+
+void loadCalibrationData()
+{
+    uint8_t calData[22];
+
+    // Read calibration data from EEPROM
+    for (int i = 0; i < 22; i++)
+    {
+        calData[i] = EEPROM.read(i);
+    }
+
+    // Load calibration data
+    bno.setSensorOffsets(calData);
+    //displayNotification("Calibration load");
 }
 
 void configureHighGInterrupt()
@@ -80,8 +113,16 @@ void sensorTask(void *pvParameters)
     TickType_t xFrequency = pdMS_TO_TICKS(10); // Convert 10 ms to ticks (100 Hz)
     unsigned long sync_timeout_time = 0;
 
+    loadCalibrationData();
+
     for (;;)
     {
+        if (calibrationSaved == false && millis() >= CALIBRATION_SAVE_TIME)
+        {
+            saveCalibrationData();
+            calibrationSaved = true;
+        }
+
         if (currentOperationMode == MODE_CLK_SYNC)
         {
             if (currentBluetoothMode == MODE_CONNECTED)
@@ -90,7 +131,8 @@ void sensorTask(void *pvParameters)
                 {
                     displayNotification("Sync started");
                     configureHighGInterrupt();
-                    while(digitalRead(HIGH_G_INT_PIN)==HIGH){
+                    while (digitalRead(HIGH_G_INT_PIN) == HIGH)
+                    {
                         clearInterrupt();
                         delay(100);
                     }
@@ -101,7 +143,8 @@ void sensorTask(void *pvParameters)
                 if (currentSyncMode == MODE_RETRY)
                 {
                     clearInterrupt();
-                    while(digitalRead(HIGH_G_INT_PIN)==HIGH){
+                    while (digitalRead(HIGH_G_INT_PIN) == HIGH)
+                    {
                         clearInterrupt();
                         delay(100);
                     }
@@ -207,6 +250,12 @@ void readSensor()
     case MODE_TEMP:
         localBnoData.timestamp = syncedMillis();
         localBnoData.temperature = bno.getTemp();
+        break;
+    case MODE_RAW:
+        localBnoData.timestamp = syncedMillis();
+        localBnoData.accelerometer = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
+        localBnoData.gyroscope = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
+        localBnoData.magnetometer = bno.getVector(Adafruit_BNO055::VECTOR_MAGNETOMETER);
         break;
     default:
 

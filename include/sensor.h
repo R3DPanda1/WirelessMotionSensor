@@ -4,6 +4,7 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
 #include "button.h"
+#include <EEPROM.h>
 //#include "commons.h"
 
 // Register addresses not included in the adafruit library
@@ -22,6 +23,8 @@
 #define BNO055_ACC_CONFIG_ADDR (0x08)  //address of register to change operatingmode/bandwidth and G-range for acceleration
 #define UNIT_SEL 0x3B
 #define TEMP_SOURCE 0x40
+
+#define CALIBRATION_SAVE_TIME 60000 //time in ms when calibration data is saved to flash memory
 
 #define BNO055_ADDRESS 0x28
 

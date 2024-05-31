@@ -5,7 +5,7 @@
 #include "BluetoothSerial.h"
 
 #include "commons.h"
-#define PACKET_SIZE 68  // Bluetooth packet size (must be higher than the biggest struct that can be sent and <=512)
+#define PACKET_SIZE 88  // Bluetooth packet size (must be higher than the biggest struct that can be sent and <=512)
 #define BT_LED_PIN 16
 // used to indicate BT communication without toggling too fast
 

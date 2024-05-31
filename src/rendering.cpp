@@ -55,6 +55,7 @@ void renderTask(void *pvParameters)
     switch (currentOperationMode)
     {
     case MODE_FUSION:
+    {
       if (currentBluetoothMode == MODE_CONNECTED)
       {
         // Some of the axes need inverting to achieve desired behaviour. These were found by trial and error
@@ -74,11 +75,14 @@ void renderTask(void *pvParameters)
 
       drawRotatedObj(display, cubeModel, 3.5, SCREEN_WIDTH / 4 * 1, SCREEN_HEIGHT / 2, rerotatedQuat);
       // Draw the cube model using the rerotated Quaternion
-      drawAccelGraph(display, renderedBnoData.linearAccel);
+      const int graph_size = 50;
+      static int8_t accelVals[3][graph_size] = {0};
+      drawVectorGraph(display, renderedBnoData.linearAccel, SCREEN_WIDTH - graph_size, graph_size, accelVals[0], accelVals[1], accelVals[2]);
       break;
+    }
     case MODE_LEVEL:
     {
-      //Convert rotation to to yaw, pitch, roll
+      // Convert rotation to to yaw, pitch, roll
       euler = renderedBnoData.rotation.toEuler();
 
       // Euler angles are in radians, convert to degrees
@@ -101,7 +105,7 @@ void renderTask(void *pvParameters)
       display.setTextSize(2);
       display.setTextColor(SH110X_INVERSE);
 
-      if (euler.z() > 45) //roll is more than 45 degrees, start drawing leveling line
+      if (euler.z() > 45) // roll is more than 45 degrees, start drawing leveling line
       {
         offsetX = map(euler.y(), 26, -26, -centerY, centerY); // not exact. 26 is chosen by trial and error
         offsetY = map(euler.z(), 0, 180, -SCREEN_HEIGHT, SCREEN_HEIGHT);
@@ -152,6 +156,19 @@ void renderTask(void *pvParameters)
       }
       // display.println(remoteBnoData.temperature);
       break;
+    case MODE_RAW:
+    {
+      const int graph_size = 20;
+      static int8_t accelVals[3][graph_size] = {0};
+      static int8_t magVals[3][graph_size] = {0};
+      static int8_t gyroVals[3][graph_size] = {0};
+      drawVectorGraph(display, renderedBnoData.accelerometer, 30, graph_size, accelVals[0], accelVals[1], accelVals[2]);
+      drawVectorGraph(display, renderedBnoData.gyroscope, 45 + graph_size, graph_size, gyroVals[0], gyroVals[1], gyroVals[2]);
+      drawVectorGraph(display, renderedBnoData.magnetometer, SCREEN_WIDTH - graph_size, graph_size, magVals[0], magVals[1], magVals[2]);
+      //  Draw the cube model using the rerotated Quaternion
+      // drawAccelGraph(display, renderedBnoData.linearAccel);
+      break;
+    }
     case MODE_CLK_SYNC:
       display.setTextSize(1);
       display.setCursor(5, 20);
@@ -236,10 +253,8 @@ int scaleLogarithmically(float val, float sensitivity)
   return (int)val;
 }
 
-void drawAccelGraph(Adafruit_SH1106G &display, imu::Vector<3> accel)
+void drawVectorGraph(Adafruit_SH1106G &display, imu::Vector<3> accel, int x_position, const int graph_x_size, int8_t *xVals, int8_t *yVals, int8_t *zVals)
 {
-  const int graph_x_size = 50;
-  static int8_t xVals[graph_x_size], yVals[graph_x_size], zVals[graph_x_size];
   int y_scale = 4;
 
   // Shift all data left by one position
@@ -248,11 +263,12 @@ void drawAccelGraph(Adafruit_SH1106G &display, imu::Vector<3> accel)
   memmove(zVals, zVals + 1, graph_x_size - 1);
 
   // Add new scaled and shifted data to the end
-  xVals[graph_x_size - 1] = constrain(scaleLogarithmically(accel.x(), y_scale), -10, 10);
-  yVals[graph_x_size - 1] = constrain(scaleLogarithmically(accel.y(), y_scale), -10, 10);
-  zVals[graph_x_size - 1] = constrain(scaleLogarithmically(accel.z(), y_scale), -10, 10);
+  xVals[graph_x_size - 1] = -1 * constrain(scaleLogarithmically(accel.x(), y_scale), -10, 10);
+  yVals[graph_x_size - 1] = -1 * constrain(scaleLogarithmically(accel.y(), y_scale), -10, 10);
+  zVals[graph_x_size - 1] = -1 * constrain(scaleLogarithmically(accel.z(), y_scale), -10, 10);
 
-  display.drawBitmap(SCREEN_WIDTH - graph_x_size - 8, 1, triAxisSprite, 8, sizeof(triAxisSprite), SH110X_WHITE);
+  // SCREEN_WIDTH - graph_x_size - 8
+  display.drawBitmap(x_position - 7, 1, triAxisSprite, 8, sizeof(triAxisSprite), SH110X_WHITE);
 
   int accel_nums[3] = {
       (int)(accel.x() * 10),
@@ -263,16 +279,16 @@ void drawAccelGraph(Adafruit_SH1106G &display, imu::Vector<3> accel)
   for (int i = 0; i < 3; i++)
   {
     len = snprintf(nullptr, 0, "%d", accel_nums[i]);
-    display.setCursor(SCREEN_WIDTH - graph_x_size - 3 - len * 6, SCREEN_HEIGHT / 6 * (2 * i + 1) + 2);
+    display.setCursor(x_position - 2 - len * 6, SCREEN_HEIGHT / 6 * (2 * i + 1) + 2);
     display.print(accel_nums[i]);
   }
 
   for (int i = 0; i < graph_x_size; i++)
   {
     // Drawing lines to make graphs
-    display.drawFastVLine(SCREEN_WIDTH - 2 - i, SCREEN_HEIGHT / 6 * 1, xVals[i], SH110X_WHITE);
-    display.drawFastVLine(SCREEN_WIDTH - 2 - i, SCREEN_HEIGHT / 6 * 3, yVals[i], SH110X_WHITE);
-    display.drawFastVLine(SCREEN_WIDTH - 2 - i, SCREEN_HEIGHT / 6 * 5, zVals[i], SH110X_WHITE);
+    display.drawFastVLine(x_position + graph_x_size - 1 - i, SCREEN_HEIGHT / 6 * 1, xVals[i], SH110X_WHITE);
+    display.drawFastVLine(x_position + graph_x_size - 1 - i, SCREEN_HEIGHT / 6 * 3, yVals[i], SH110X_WHITE);
+    display.drawFastVLine(x_position + graph_x_size - 1 - i, SCREEN_HEIGHT / 6 * 5, zVals[i], SH110X_WHITE);
   }
 }
 

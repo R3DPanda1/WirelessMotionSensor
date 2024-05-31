@@ -108,6 +108,10 @@ void buttonTask(void *pvParameters)
                     displayNotification("Spirit Level");
                     break;
                 case MODE_LEVEL:
+                    currentOperationMode = MODE_RAW;
+                    displayNotification("Raw");
+                    break;
+                case MODE_RAW:
                     currentOperationMode = MODE_FUSION;
                     displayNotification("Fusion");
                     break;

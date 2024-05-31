@@ -37,7 +37,7 @@ void receiveStruct(BluetoothSerial &SerialBT)
             memcpy(&receivedData, buffer + 1, sizeof(receivedData));
             remoteBnoData.timestamp = receivedData.timestamp;
             remoteBnoData.linearAccel = receivedData.linearAccel;
-            receivedData.rotation.normalize(); //make sure recieved quaternion is notmalized to prevent crashes
+            receivedData.rotation.normalize(); // make sure recieved quaternion is notmalized to prevent crashes
             remoteBnoData.rotation = receivedData.rotation;
             break;
         }
@@ -64,8 +64,23 @@ void receiveStruct(BluetoothSerial &SerialBT)
             LevelData receivedData;
             memcpy(&receivedData, buffer + 1, sizeof(receivedData));
             remoteBnoData.timestamp = receivedData.timestamp;
-            receivedData.rotation.normalize(); //make sure recieved quaternion is notmalized to prevent crashes
+            receivedData.rotation.normalize(); // make sure recieved quaternion is notmalized to prevent crashes
             remoteBnoData.rotation = receivedData.rotation;
+            break;
+        }
+        case RawData_ID:
+        {
+            if (currentOperationMode != MODE_RAW && btRole == SLAVE)
+            {
+                currentOperationMode = MODE_RAW;
+                displayNotification("Raw");
+            }
+            RawData receivedData;
+            memcpy(&receivedData, buffer + 1, sizeof(receivedData));
+            remoteBnoData.timestamp = receivedData.timestamp;
+            remoteBnoData.accelerometer = receivedData.accelerometer;
+            remoteBnoData.magnetometer = receivedData.magnetometer;
+            remoteBnoData.gyroscope = receivedData.gyroscope;
             break;
         }
         case SyncStart_ID:
@@ -104,7 +119,7 @@ void receiveBT(BluetoothSerial &SerialBT, void *data, size_t dataSize)
 
 void unpairBT(BluetoothSerial &SerialBT)
 {
-    displayNotification("Disconnected!"); //show message early for quick response
+    displayNotification("Disconnected!"); // show message early for quick response
     SerialBT.disconnect();
     SerialBT.flush();
     SerialBT.end();
@@ -170,6 +185,12 @@ void bluetoothTXTask(void *pvParameters)
             {
                 LevelData dataToSend = {localBnoData.timestamp, localBnoData.rotation};
                 sendStruct(SerialBT, LevelData_ID, &dataToSend, sizeof(dataToSend));
+                break;
+            }
+            case MODE_RAW:
+            {
+                RawData dataToSend = {localBnoData.timestamp, localBnoData.accelerometer, localBnoData.magnetometer, localBnoData.gyroscope};
+                sendStruct(SerialBT, RawData_ID, &dataToSend, sizeof(dataToSend));
                 break;
             }
             case MODE_CLK_SYNC:

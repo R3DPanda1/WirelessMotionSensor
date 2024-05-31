@@ -56,6 +56,15 @@ struct FusionData
     imu::Quaternion rotation;
 };
 
+const char RawData_ID = 'R';
+struct RawData
+{
+    unsigned long timestamp;
+    imu::Vector<3> accelerometer;
+    imu::Vector<3> magnetometer;
+    imu::Vector<3> gyroscope;
+};
+
 const char SyncStart_ID = 'S';
 
 const char LevelData_ID = 'L';
@@ -97,7 +106,8 @@ enum OperationMode
     MODE_FUSION,
     MODE_LEVEL,
     MODE_CLK_SYNC,
-    MODE_TEMP
+    MODE_TEMP,
+    MODE_RAW
 };
 extern volatile OperationMode currentOperationMode;
 

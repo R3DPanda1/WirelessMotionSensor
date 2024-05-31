@@ -123,7 +123,7 @@ const unsigned char syncSprite[] PROGMEM = {
     0xff, 0xff, 0xe0, 0x00};
 
 void drawRotatedObj(Adafruit_SH1106G &display, Model model, float objSize, float objOffset_x, float objOffset_y, imu::Quaternion quat);
-void drawAccelGraph(Adafruit_SH1106G &display, imu::Vector<3> accel);
+void drawVectorGraph(Adafruit_SH1106G &display, imu::Vector<3> accel, int x_position, const int graph_x_size, int8_t *xVals, int8_t *yVals, int8_t *zVals);
 int scaleLogarithmically(float val, float sensitivity);
 void rotatePoint(float &x, float &y, float &z, imu::Quaternion quat);
 Model createModel(Vertex *vertices, Index *indices, uint8_t numIndices);
