@@ -50,7 +50,7 @@ char *vectorToCsvString(imu::Vector<3> vector, char *buffer)
     return buffer;
 }
 
-String formatSensorData(BNO055Data &data)
+String formatSensorData(IMU_Data &data)
 {
     char buffer[500]; // Buffer to hold the entire CSV line.
 
@@ -75,22 +75,24 @@ void csvGenTask(void *pvParameters)
 {
     for (;;)
     {
+        TickType_t xFrequency = pdMS_TO_TICKS(10); // Convert 10 ms to ticks (100 Hz)
         while (currentRecordingMode == RECORDING)
         {
             String dataBuffer; // String to hold CSV formatted data
+            TickType_t xLastWakeTime = xTaskGetTickCount(); // Get the current tick
 
             for (int i = 0; i < CSV_BUFFER_SIZE; i++)
             {
-                dataBuffer += formatSensorData(localBnoData);
+                dataBuffer += formatSensorData(localImuData);
 
                 // Handle Bluetooth mode-specific operations
                 if (currentBluetoothMode == MODE_CONNECTED)
                 {
-                    dataBuffer += formatSensorData(remoteBnoData);
+                    dataBuffer += formatSensorData(remoteImuData);
                 }
 
                 dataBuffer += "\n";
-                vTaskDelay(pdMS_TO_TICKS(10));
+                vTaskDelayUntil(&xLastWakeTime, xFrequency);
             }
 
             if (xSemaphoreTake(csvSemaphore, portMAX_DELAY) == pdTRUE)
@@ -110,9 +112,9 @@ void sdCardTask(void *pvParameters)
 {
     vTaskDelay(pdMS_TO_TICKS(1000)); // if SD card is initialized too early, ESP32 crashes
     pinMode(CD_PIN, INPUT_PULLUP);
+    TickType_t xFrequency = pdMS_TO_TICKS(10);      // Convert 10 ms to ticks (100 Hz)
     for (;;)
     {
-        TickType_t xFrequency = pdMS_TO_TICKS(10);      // Convert 10 ms to ticks (100 Hz)
         TickType_t xLastWakeTime = xTaskGetTickCount(); // Get the current tick
         switch (currentSdState)
         {
@@ -216,50 +218,4 @@ void sdCardTask(void *pvParameters)
         }
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }
-    /*
-        while (digitalRead(CD_PIN) == HIGH)
-        {
-            vTaskDelay(pdMS_TO_TICKS(1000));
-        }
-        displayNotification("SD inserted");
-        delay(1000);
-        if (!SD.begin(CS_PIN)) // check if SD card is present
-        {
-            displayNotification("Can't connect SD");
-        }
-        currentSdState = CONNECTED;
-        displayNotification("SD card connected");
-        while (currentRecordingMode != SD_CARD)
-        {
-            vTaskDelay(pdMS_TO_TICKS(1000));
-        }
-
-        for (;;)
-        {
-            TickType_t xFrequency = pdMS_TO_TICKS(10);      // Convert 10 ms to ticks (100 Hz)
-            TickType_t xLastWakeTime = xTaskGetTickCount(); // Get the current tick
-            if (digitalRead(CD_PIN) == LOW)
-            {
-                if (dataReady == 1)
-                {
-                    if (xSemaphoreTake(csvSemaphore, portMAX_DELAY) == pdTRUE)
-                    {
-                        // write to SD card
-                        WriteFile(currentFilePath.c_str(), csvDataToWrite.c_str());
-                        csvDataToWrite.clear();
-                        dataReady = 0;
-                        xSemaphoreGive(csvSemaphore);
-                    }
-                }
-            }
-            else
-            {
-                currentSdState = REMOVED;
-                displayNotification("SD card removed!");
-                break;
-            }
-            // vTaskDelay(pdMS_TO_TICKS(5));
-            vTaskDelayUntil(&xLastWakeTime, xFrequency);
-        }
-        */
 }

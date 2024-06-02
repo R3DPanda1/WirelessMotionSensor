@@ -44,7 +44,7 @@ void saveCalibrationData()
 
     // Commit changes to EEPROM
     EEPROM.commit();
-    //displayNotification("Calibration saved");
+    // displayNotification("Calibration saved");
 }
 
 void loadCalibrationData()
@@ -59,7 +59,7 @@ void loadCalibrationData()
 
     // Load calibration data
     bno.setSensorOffsets(calData);
-    //displayNotification("Calibration load");
+    // displayNotification("Calibration load");
 }
 
 void configureHighGInterrupt()
@@ -117,6 +117,10 @@ void sensorTask(void *pvParameters)
 
     for (;;)
     {
+        //Save wakeup time
+        TickType_t xLastWakeTime = xTaskGetTickCount();
+        xLastWakeTime = xTaskGetTickCount();
+
         if (calibrationSaved == false && millis() >= CALIBRATION_SAVE_TIME)
         {
             saveCalibrationData();
@@ -170,7 +174,7 @@ void sensorTask(void *pvParameters)
                     if (btRole == MASTER)
                     {
                         // check if the remote device was synced roughly at the same time
-                        unsigned long remoteTime = remoteBnoData.timestamp;
+                        unsigned long remoteTime = remoteImuData.timestamp;
                         unsigned long localTime = syncedMillis();
                         unsigned long timeDiff;
                         if (localTime > remoteTime)
@@ -224,9 +228,7 @@ void sensorTask(void *pvParameters)
             }
             readSensor();
         }
-        // Delay until it is time to run again
-        TickType_t xLastWakeTime = xTaskGetTickCount(); // Get the current tick
-        xLastWakeTime = xTaskGetTickCount();            // Get the current tick
+        // Delay until it is time to wake up again
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
     }
 }
@@ -236,26 +238,26 @@ void readSensor()
     switch (currentOperationMode)
     {
     case MODE_FUSION:
-        localBnoData.timestamp = syncedMillis();
-        localBnoData.rotation = bno.getQuat();
-        localBnoData.rotation.normalize(); // make sure recieved quaternion is notmalized to prevent crashes
-        localBnoData.linearAccel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
+        localImuData.timestamp = syncedMillis();
+        localImuData.rotation = bno.getQuat();
+        localImuData.rotation.normalize(); // make sure recieved quaternion is notmalized to prevent crashes
+        localImuData.linearAccel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
         break;
     case MODE_LEVEL:
-        localBnoData.timestamp = syncedMillis();
-        localBnoData.rotation = bno.getQuat();
-        localBnoData.rotation.normalize(); // make sure recieved quaternion is notmalized to prevent crashes
+        localImuData.timestamp = syncedMillis();
+        localImuData.rotation = bno.getQuat();
+        localImuData.rotation.normalize(); // make sure recieved quaternion is notmalized to prevent crashes
         // localBnoData.linearAccel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
         break;
     case MODE_TEMP:
-        localBnoData.timestamp = syncedMillis();
-        localBnoData.temperature = bno.getTemp();
+        localImuData.timestamp = syncedMillis();
+        localImuData.temperature = bno.getTemp();
         break;
     case MODE_RAW:
-        localBnoData.timestamp = syncedMillis();
-        localBnoData.accelerometer = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
-        localBnoData.gyroscope = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
-        localBnoData.magnetometer = bno.getVector(Adafruit_BNO055::VECTOR_MAGNETOMETER);
+        localImuData.timestamp = syncedMillis();
+        localImuData.accelerometer = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
+        localImuData.gyroscope = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
+        localImuData.magnetometer = bno.getVector(Adafruit_BNO055::VECTOR_MAGNETOMETER);
         break;
     default:
 

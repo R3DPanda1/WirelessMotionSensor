@@ -7,8 +7,8 @@ volatile SyncMode currentSyncMode = MODE_IDLE;
 volatile SD_State currentSdState = REMOVED;
 volatile BluetoothConnectionState btRole = UNPAIRED;
 
-BNO055Data localBnoData = {0};
-BNO055Data remoteBnoData = {0};
+IMU_Data localImuData = {0};
+IMU_Data remoteImuData = {0};
 
 unsigned long millis_sync_offset = 0;
 

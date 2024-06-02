@@ -87,7 +87,7 @@ struct NoneData
     int test;
 };
 
-struct BNO055Data
+struct IMU_Data
 {
     unsigned long timestamp;
     imu::Vector<3> accelerometer;
@@ -98,8 +98,8 @@ struct BNO055Data
     int8_t temperature;
 };
 
-extern BNO055Data localBnoData;
-extern BNO055Data remoteBnoData;
+extern IMU_Data localImuData;
+extern IMU_Data remoteImuData;
 
 enum OperationMode
 {

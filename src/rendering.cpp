@@ -10,6 +10,7 @@ Model cubeModel;
 Model deviceModel;
 
 Adafruit_SH1106G display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+// Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 TaskHandle_t renderTaskHandle = NULL;
 
@@ -42,12 +43,25 @@ void renderTask(void *pvParameters)
 
   for (;;)
   {
+    if (uxQueueMessagesWaiting(displayNotificationQueue) > 0 && millis() > drawNotificationUntil)
+    {
+      if (xQueueReceive(displayNotificationQueue, &notification, portMAX_DELAY) == pdTRUE)
+      {
+        display.setTextSize(1);
+        // Calculate the width and height of the notification text
+        display.getTextBounds(notification, 0, 0, &x1, &y1, &w, &h);
+
+        // Display the notification
+        drawNotificationUntil = millis() + 1000;
+      }
+    }
+
     display.clearDisplay();
 
-    BNO055Data renderedBnoData = localBnoData;
+    IMU_Data renderedBnoData = localImuData;
     if (currentBluetoothMode == MODE_CONNECTED)
     {
-      renderedBnoData = remoteBnoData;
+      renderedBnoData = remoteImuData;
     }
 
     imu::Quaternion rerotatedQuat = {1, 0, 0, 0};
@@ -59,9 +73,9 @@ void renderTask(void *pvParameters)
       if (currentBluetoothMode == MODE_CONNECTED)
       {
         // Some of the axes need inverting to achieve desired behaviour. These were found by trial and error
-        imu::Quaternion quat1 = {localBnoData.rotation.w(), -localBnoData.rotation.x(), localBnoData.rotation.y(), localBnoData.rotation.z()};
-        imu::Quaternion quat2 = {remoteBnoData.rotation.w(), remoteBnoData.rotation.x(), -remoteBnoData.rotation.y(), -remoteBnoData.rotation.z()};
-        // Calculate rotation of remote device from the point of view of the local device
+        imu::Quaternion quat1 = {localImuData.rotation.w(), -localImuData.rotation.x(), localImuData.rotation.y(), localImuData.rotation.z()};
+        imu::Quaternion quat2 = {remoteImuData.rotation.w(), remoteImuData.rotation.x(), -remoteImuData.rotation.y(), -remoteImuData.rotation.z()};
+        // Calculate rotation of remote device from the point of view of the local device 
         rerotatedQuat = quat1 * quat2;
       }
       else
@@ -135,10 +149,10 @@ void renderTask(void *pvParameters)
       display.setCursor(18, 0);
       display.print("Local");
       display.drawBitmap(13, 12, thermometSprite, thermometSprite_W, thermometSprite_H, SH110X_WHITE);
-      display.fillRect(19, 14 + 39 - localBnoData.temperature / 2, 4, localBnoData.temperature / 2, SH110X_WHITE);
+      display.fillRect(19, 14 + 39 - localImuData.temperature / 2, 4, localImuData.temperature / 2, SH110X_WHITE);
       display.setCursor(15 + thermometSprite_W, 13);
       display.setTextSize(2);
-      display.print(localBnoData.temperature);
+      display.print(localImuData.temperature);
       display.print("C");
       display.setTextSize(1);
       if (currentBluetoothMode == MODE_CONNECTED)
@@ -147,10 +161,10 @@ void renderTask(void *pvParameters)
         display.setCursor(57 + 18, 0);
         display.print("Remote");
         display.drawBitmap(57 + 13, 12, thermometSprite, thermometSprite_W, thermometSprite_H, SH110X_WHITE);
-        display.fillRect(57 + 19, 14 + 39 - remoteBnoData.temperature / 2, 4, remoteBnoData.temperature / 2, SH110X_WHITE);
+        display.fillRect(57 + 19, 14 + 39 - remoteImuData.temperature / 2, 4, remoteImuData.temperature / 2, SH110X_WHITE);
         display.setCursor(57 + 15 + thermometSprite_W, 13);
         display.setTextSize(2);
-        display.print(remoteBnoData.temperature);
+        display.print(remoteImuData.temperature);
         display.print("C");
         display.setTextSize(1);
       }
@@ -179,7 +193,7 @@ void renderTask(void *pvParameters)
       display.print(syncedMillis());
       display.setCursor(55, 50);
       display.print("R:");
-      display.print(remoteBnoData.timestamp);
+      display.print(remoteImuData.timestamp);
       break;
     }
 
@@ -200,7 +214,7 @@ void renderTask(void *pvParameters)
     // display.print(analogRead(LIPO_MONITOR_PIN));
     if (currentBluetoothMode == MODE_CONNECTED || (currentBluetoothMode == MODE_CONNECTING && TOGGLE_200MS_STATE))
     {
-      renderedBnoData = remoteBnoData;
+      renderedBnoData = remoteImuData;
       display.drawBitmap(0, 0, btSprite, 8, sizeof(btSprite), SH110X_INVERSE);
     }
 
@@ -229,18 +243,6 @@ void renderTask(void *pvParameters)
     display.fillRect(SCREEN_WIDTH - 13 + 2, 2, batt_pixels, 3, SH110X_INVERSE);
 
     display.display();
-    if (uxQueueMessagesWaiting(displayNotificationQueue) > 0 && millis() > drawNotificationUntil)
-    {
-      if (xQueueReceive(displayNotificationQueue, &notification, portMAX_DELAY) == pdTRUE)
-      {
-        display.setTextSize(1);
-        // Calculate the width and height of the notification text
-        display.getTextBounds(notification, 0, 0, &x1, &y1, &w, &h);
-
-        // Display the notification
-        drawNotificationUntil = millis() + 1000;
-      }
-    }
     delay(10);
   }
 }
