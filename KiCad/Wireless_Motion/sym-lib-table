@@ -1,0 +1,3 @@
+(sym_lib_table
+  (lib (name "Mouser")(type "KiCad")(uri "${KIPRJMOD}/Mouser.kicad_sym")(options "")(descr ""))
+)
