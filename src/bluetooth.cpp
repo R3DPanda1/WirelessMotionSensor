@@ -24,6 +24,7 @@ void receiveStruct(BluetoothSerial &SerialBT)
         // Serial.write(id);
         // Serial.println();
 
+        IMU_Data tempData = {0};
         switch (id)
         {
         case FusionData_ID:
@@ -35,10 +36,10 @@ void receiveStruct(BluetoothSerial &SerialBT)
             }
             FusionData receivedData;
             memcpy(&receivedData, buffer + 1, sizeof(receivedData));
-            remoteImuData.timestamp = receivedData.timestamp;
-            remoteImuData.linearAccel = receivedData.linearAccel;
-            receivedData.rotation.normalize(); // make sure recieved quaternion is notmalized to prevent crashes
-            remoteImuData.rotation = receivedData.rotation;
+            tempData.timestamp = receivedData.timestamp;
+            tempData.linearAccel = receivedData.linearAccel;
+            receivedData.orientation.normalize(); // make sure recieved quaternion is notmalized to prevent crashes
+            tempData.orientation = receivedData.orientation;
             break;
         }
         case TempData_ID:
@@ -50,8 +51,8 @@ void receiveStruct(BluetoothSerial &SerialBT)
             }
             TempData receivedData;
             memcpy(&receivedData, buffer + 1, sizeof(receivedData));
-            remoteImuData.timestamp = receivedData.timestamp;
-            remoteImuData.temperature = receivedData.temperature;
+            tempData.timestamp = receivedData.timestamp;
+            tempData.temperature = receivedData.temperature;
             break;
         }
         case LevelData_ID:
@@ -63,9 +64,9 @@ void receiveStruct(BluetoothSerial &SerialBT)
             }
             LevelData receivedData;
             memcpy(&receivedData, buffer + 1, sizeof(receivedData));
-            remoteImuData.timestamp = receivedData.timestamp;
-            receivedData.rotation.normalize(); // make sure recieved quaternion is notmalized to prevent crashes
-            remoteImuData.rotation = receivedData.rotation;
+            tempData.timestamp = receivedData.timestamp;
+            receivedData.orientation.normalize(); // make sure recieved quaternion is notmalized to prevent crashes
+            tempData.orientation = receivedData.orientation;
             break;
         }
         case RawData_ID:
@@ -77,10 +78,10 @@ void receiveStruct(BluetoothSerial &SerialBT)
             }
             RawData receivedData;
             memcpy(&receivedData, buffer + 1, sizeof(receivedData));
-            remoteImuData.timestamp = receivedData.timestamp;
-            remoteImuData.accelerometer = receivedData.accelerometer;
-            remoteImuData.magnetometer = receivedData.magnetometer;
-            remoteImuData.gyroscope = receivedData.gyroscope;
+            tempData.timestamp = receivedData.timestamp;
+            tempData.accelerometer = receivedData.accelerometer;
+            tempData.magnetometer = receivedData.magnetometer;
+            tempData.gyroscope = receivedData.gyroscope;
             break;
         }
         case SyncStart_ID:
@@ -90,15 +91,28 @@ void receiveStruct(BluetoothSerial &SerialBT)
                 currentSyncMode = MODE_SYNC_START;
                 currentOperationMode = MODE_CLK_SYNC;
             }
+            //reveivedSyncTimestampAt = syncedMillis(); //testing
             unsigned long receivedData;
             memcpy(&receivedData, buffer + 1, sizeof(receivedData));
-            remoteImuData.timestamp = receivedData;
+            tempData.timestamp = receivedData;
             break;
         }
         default:
             displayNotification("Bluetooth Error!");
             unpairBT(SerialBT);
             break;
+        }
+
+        if (currentOperationMode == MODE_CLK_SYNC)
+        {
+            remoteImuDataGL = {0};
+            remoteImuDataGL = tempData;
+        }
+        else if (xSemaphoreTake(remoteImuSemaphore, portMAX_DELAY) == pdTRUE)
+        {
+            remoteImuDataGL = {0};
+            remoteImuDataGL = tempData;
+            xSemaphoreGive(remoteImuSemaphore);
         }
         digitalWrite(BT_LED_PIN, TOGGLE_200MS_STATE);
     }
@@ -152,12 +166,19 @@ void bluetoothTXTask(void *pvParameters)
     BluetoothSerial SerialBT = (BluetoothSerial &)pvParameters;
     SerialBT.begin(bluetoothName, false);
     TickType_t xFrequency = pdMS_TO_TICKS(10); // Convert 10 ms to ticks (100 Hz)
+    TickType_t xLastWakeTime = xTaskGetTickCount();
 
     for (;;)
     {
         // Save wakeup time
-        TickType_t xLastWakeTime = xTaskGetTickCount();
         xLastWakeTime = xTaskGetTickCount();
+
+        IMU_Data localImuData;
+        if (xSemaphoreTake(localImuSemaphore, portMAX_DELAY) == pdTRUE)
+        {
+            localImuData = localImuDataGL;
+            xSemaphoreGive(localImuSemaphore);
+        }
 
         if (currentBluetoothMode == MODE_DISCONNECT)
         {
@@ -175,7 +196,7 @@ void bluetoothTXTask(void *pvParameters)
             {
             case MODE_FUSION:
             {
-                FusionData dataToSend = {localImuData.timestamp, localImuData.linearAccel, localImuData.rotation};
+                FusionData dataToSend = {localImuData.timestamp, localImuData.linearAccel, localImuData.orientation};
                 sendStruct(SerialBT, FusionData_ID, &dataToSend, sizeof(dataToSend));
                 break;
             }
@@ -188,7 +209,7 @@ void bluetoothTXTask(void *pvParameters)
             }
             case MODE_LEVEL:
             {
-                LevelData dataToSend = {localImuData.timestamp, localImuData.rotation};
+                LevelData dataToSend = {localImuData.timestamp, localImuData.orientation};
                 sendStruct(SerialBT, LevelData_ID, &dataToSend, sizeof(dataToSend));
                 break;
             }
@@ -201,6 +222,7 @@ void bluetoothTXTask(void *pvParameters)
             case MODE_CLK_SYNC:
             {
                 unsigned long dataToSend = syncedMillis();
+                //sentSyncTimestamp = dataToSend; //testing
                 sendStruct(SerialBT, SyncStart_ID, &dataToSend, sizeof(dataToSend));
                 break;
             }

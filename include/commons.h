@@ -21,8 +21,16 @@
 extern QueueHandle_t displayNotificationQueue;
 void displayNotification(const char *message);
 
+// Testing only declarations
+#define TEST_INT_PIN 15
+extern unsigned long test_timestamp;
+void IRAM_ATTR test_isr();
+
+extern unsigned long sentSyncTimestamp;
+extern unsigned long reveivedSyncTimestampAt;
+
 #define HIGH_G_INT_PIN 17
-#define SYNC_BT_TOLERANCE 30 // maximum accepted time difference between devices
+#define SYNC_BT_TOLERANCE 10 // maximum accepted time difference between devices in ms
 void IRAM_ATTR clk_sync_isr();
 unsigned long syncedMillis();
 
@@ -53,7 +61,7 @@ struct FusionData
 {
     unsigned long timestamp;
     imu::Vector<3> linearAccel;
-    imu::Quaternion rotation;
+    imu::Quaternion orientation;
 };
 
 const char RawData_ID = 'R';
@@ -71,7 +79,7 @@ const char LevelData_ID = 'L';
 struct LevelData
 {
     unsigned long timestamp;
-    imu::Quaternion rotation;
+    imu::Quaternion orientation;
 };
 
 const char TempData_ID = 'T';
@@ -81,25 +89,19 @@ struct TempData
     int8_t temperature;
 };
 
-const char NoneData_ID = 'N';
-struct NoneData
-{
-    int test;
-};
-
 struct IMU_Data
 {
     unsigned long timestamp;
     imu::Vector<3> accelerometer;
     imu::Vector<3> magnetometer;
     imu::Vector<3> gyroscope;
-    imu::Quaternion rotation;
+    imu::Quaternion orientation;
     imu::Vector<3> linearAccel;
     int8_t temperature;
 };
 
-extern IMU_Data localImuData;
-extern IMU_Data remoteImuData;
+extern IMU_Data localImuDataGL;
+extern IMU_Data remoteImuDataGL;
 
 enum OperationMode
 {
@@ -137,6 +139,7 @@ enum RecordingMode
 };
 extern volatile RecordingMode currentRecordingMode;
 
-// SemaphoreHandle_t sdSemaphore;
+extern SemaphoreHandle_t localImuSemaphore;
+extern SemaphoreHandle_t remoteImuSemaphore;
 
 #endif // BLUETOOTH_H

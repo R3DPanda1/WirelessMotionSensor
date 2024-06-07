@@ -46,25 +46,32 @@ String generateNewFilename()
 
 char *vectorToCsvString(imu::Vector<3> vector, char *buffer)
 {
-    snprintf(buffer, 50, "%.6f,%.6f,%.6f,", vector.x(), vector.y(), vector.z());
+    if (vector.x() == 0 && vector.x() == 0 && vector.x() == 0)
+    {
+        strcpy(buffer, "0,0,0,"); // quick conversion when vector is empty
+    }
+    else
+    {
+        snprintf(buffer, 40, "%.6f,%.6f,%.6f,", vector.x(), vector.y(), vector.z());
+    }
     return buffer;
 }
 
 String formatSensorData(IMU_Data &data)
 {
-    char buffer[500]; // Buffer to hold the entire CSV line.
+    char buffer[500]; // Buffer to hold an entire CSV line.
 
     // Buffers for individual vector conversions.
-    char accBuffer[35];
-    char magBuffer[35];
-    char gyroBuffer[35];
-    char laccBuffer[35];
+    char accBuffer[40];
+    char magBuffer[40];
+    char gyroBuffer[40];
+    char laccBuffer[40];
     snprintf(buffer, sizeof(buffer), "%lu,%s%s%s%.6f,%.6f,%.6f,%.6f,%s%d,",
              data.timestamp,
              vectorToCsvString(data.accelerometer, accBuffer),
              vectorToCsvString(data.magnetometer, magBuffer),
              vectorToCsvString(data.gyroscope, gyroBuffer),
-             data.rotation.w(), data.rotation.x(), data.rotation.y(), data.rotation.z(),
+             data.orientation.w(), data.orientation.x(), data.orientation.y(), data.orientation.z(),
              vectorToCsvString(data.linearAccel, laccBuffer),
              data.temperature);
 
@@ -75,20 +82,33 @@ void csvGenTask(void *pvParameters)
 {
     for (;;)
     {
+        IMU_Data localImuData;
+        IMU_Data remoteImuData;
+        if (xSemaphoreTake(localImuSemaphore, portMAX_DELAY) == pdTRUE)
+        {
+            localImuData = localImuDataGL;
+            xSemaphoreGive(localImuSemaphore);
+        }
+        if (xSemaphoreTake(remoteImuSemaphore, portMAX_DELAY) == pdTRUE)
+        {
+            remoteImuData = remoteImuDataGL;
+            xSemaphoreGive(remoteImuSemaphore);
+        }
+
         TickType_t xFrequency = pdMS_TO_TICKS(10); // Convert 10 ms to ticks (100 Hz)
         while (currentRecordingMode == RECORDING)
         {
-            String dataBuffer; // String to hold CSV formatted data
+            String dataBuffer;                              // String to hold CSV formatted data
             TickType_t xLastWakeTime = xTaskGetTickCount(); // Get the current tick
 
             for (int i = 0; i < CSV_BUFFER_SIZE; i++)
             {
-                dataBuffer += formatSensorData(localImuData);
+                dataBuffer += formatSensorData(localImuDataGL);
 
                 // Handle Bluetooth mode-specific operations
                 if (currentBluetoothMode == MODE_CONNECTED)
                 {
-                    dataBuffer += formatSensorData(remoteImuData);
+                    dataBuffer += formatSensorData(remoteImuDataGL);
                 }
 
                 dataBuffer += "\n";
@@ -112,7 +132,7 @@ void sdCardTask(void *pvParameters)
 {
     vTaskDelay(pdMS_TO_TICKS(1000)); // if SD card is initialized too early, ESP32 crashes
     pinMode(CD_PIN, INPUT_PULLUP);
-    TickType_t xFrequency = pdMS_TO_TICKS(10);      // Convert 10 ms to ticks (100 Hz)
+    TickType_t xFrequency = pdMS_TO_TICKS(10); // Convert 10 ms to ticks (100 Hz)
     for (;;)
     {
         TickType_t xLastWakeTime = xTaskGetTickCount(); // Get the current tick
@@ -152,8 +172,8 @@ void sdCardTask(void *pvParameters)
                 File myFile = SD.open(currentFilePath.c_str(), FILE_WRITE);
                 if (myFile)
                 {
-                    myFile.print("Timestamp;AccX;AccY;AccZ;MagX;MagY;MagZ;GyroX;GyroY;GyroZ;QuatW;QuatX;QuatY;QuatZ;linAccX;linAccY;linAccZ;Temp;");  // Write header
-                    myFile.println("Timestamp;AccX;AccY;AccZ;MagX;MagY;MagZ;GyroX;GyroY;GyroZ;QuatW;QuatX;QuatY;QuatZ;linAccX;linAccY;linAccZ;Temp"); // Write header
+                    myFile.print("Timestamp,AccX,AccY,AccZ,MagX,MagY,MagZ,GyroX,GyroY,GyroZ,QuatW,QuatX,QuatY,QuatZ,linAccX,linAccY,linAccZ,Temp,");  // Write header
+                    myFile.println("Timestamp,AccX,AccY,AccZ,MagX,MagY,MagZ,GyroX,GyroY,GyroZ,QuatW,QuatX,QuatY,QuatZ,linAccX,linAccY,linAccZ,Temp"); // Write header
                     myFile.close();
                     vTaskDelay(pdMS_TO_TICKS(1000));
                     displayNotification(currentFilePath.c_str());

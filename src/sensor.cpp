@@ -81,6 +81,8 @@ void configureHighGInterrupt()
 
     writeBNO(Adafruit_BNO055::BNO055_PAGE_ID_ADDR, 0);
 
+    // Serial.println(readBNO(UNIT_SEL),BIN); //check units
+
     // writeBNO(TEMP_SOURCE, 0b00000001); //choose the gyro temperature sensor
     // writeBNO(UNIT_SEL, 0b10010000); //get Fahrenheit
 
@@ -111,14 +113,14 @@ void sensorTask(void *pvParameters)
 
     // int delayAmount = 10;
     TickType_t xFrequency = pdMS_TO_TICKS(10); // Convert 10 ms to ticks (100 Hz)
+    TickType_t xLastWakeTime = xTaskGetTickCount();
     unsigned long sync_timeout_time = 0;
 
     loadCalibrationData();
 
     for (;;)
     {
-        //Save wakeup time
-        TickType_t xLastWakeTime = xTaskGetTickCount();
+        // Save wakeup time
         xLastWakeTime = xTaskGetTickCount();
 
         if (calibrationSaved == false && millis() >= CALIBRATION_SAVE_TIME)
@@ -174,7 +176,7 @@ void sensorTask(void *pvParameters)
                     if (btRole == MASTER)
                     {
                         // check if the remote device was synced roughly at the same time
-                        unsigned long remoteTime = remoteImuData.timestamp;
+                        unsigned long remoteTime = remoteImuDataGL.timestamp;
                         unsigned long localTime = syncedMillis();
                         unsigned long timeDiff;
                         if (localTime > remoteTime)
@@ -235,32 +237,38 @@ void sensorTask(void *pvParameters)
 
 void readSensor()
 {
+    IMU_Data tempData = {0};
     switch (currentOperationMode)
     {
     case MODE_FUSION:
-        localImuData.timestamp = syncedMillis();
-        localImuData.rotation = bno.getQuat();
-        localImuData.rotation.normalize(); // make sure recieved quaternion is notmalized to prevent crashes
-        localImuData.linearAccel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
+        tempData.timestamp = syncedMillis();
+        tempData.orientation = bno.getQuat();
+        tempData.orientation.normalize(); // make sure recieved quaternion is notmalized to prevent crashes
+        tempData.linearAccel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
         break;
     case MODE_LEVEL:
-        localImuData.timestamp = syncedMillis();
-        localImuData.rotation = bno.getQuat();
-        localImuData.rotation.normalize(); // make sure recieved quaternion is notmalized to prevent crashes
-        // localBnoData.linearAccel = bno.getVector(Adafruit_BNO055::VECTOR_LINEARACCEL);
+        tempData.timestamp = syncedMillis();
+        tempData.orientation = bno.getQuat();
+        tempData.orientation.normalize(); // make sure recieved quaternion is notmalized to prevent crashes
         break;
     case MODE_TEMP:
-        localImuData.timestamp = syncedMillis();
-        localImuData.temperature = bno.getTemp();
+        tempData.timestamp = syncedMillis();
+        tempData.temperature = bno.getTemp();
         break;
     case MODE_RAW:
-        localImuData.timestamp = syncedMillis();
-        localImuData.accelerometer = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
-        localImuData.gyroscope = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
-        localImuData.magnetometer = bno.getVector(Adafruit_BNO055::VECTOR_MAGNETOMETER);
+        tempData.timestamp = syncedMillis();
+        tempData.accelerometer = bno.getVector(Adafruit_BNO055::VECTOR_ACCELEROMETER);
+        tempData.gyroscope = bno.getVector(Adafruit_BNO055::VECTOR_GYROSCOPE);
+        tempData.magnetometer = bno.getVector(Adafruit_BNO055::VECTOR_MAGNETOMETER);
         break;
     default:
 
         break;
+    }
+    if (xSemaphoreTake(localImuSemaphore, portMAX_DELAY) == pdTRUE)
+    {
+        localImuDataGL = {0};
+        localImuDataGL = tempData;
+        xSemaphoreGive(localImuSemaphore);
     }
 }

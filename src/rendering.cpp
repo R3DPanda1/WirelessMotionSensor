@@ -29,20 +29,37 @@ void renderTask(void *pvParameters)
   display.setTextColor(SH110X_WHITE); // Set color to white.
 
   cubeModel = createModel(cube_vertices, cube_indices, sizeof(cube_indices) / sizeof(cube_indices[0]));
-  //  deviceModel = createModel(device_vertices, device_indices, sizeof(device_indices) / sizeof(device_indices[0]));
+  // deviceModel = createModel(device_vertices, device_indices, sizeof(device_indices) / sizeof(device_indices[0]));
 
   displayNotificationQueue = xQueueCreate(3, sizeof(char *));
-  char *notification;
-  int16_t x1, y1;
-  uint16_t w, h;
-  const uint16_t padding = 3;
-  unsigned long drawNotificationUntil = 0;
-  int batt_level = analogRead(LIPO_MONITOR_PIN);
-  int batt_pixels = map(batt_level, 1700, 2300, 0, 8);
-  unsigned long nextBatteryMesurement = 0;
+
+  //pinMode(TEST_INT_PIN, INPUT_PULLUP);
+  //attachInterrupt(TEST_INT_PIN, test_isr, FALLING);
 
   for (;;)
   {
+    // unsigned long startTime = millis();
+    // static unsigned long renderTime = 0;
+
+    // copy IMU data
+    IMU_Data localImuData;
+    IMU_Data remoteImuData;
+    if (xSemaphoreTake(localImuSemaphore, portMAX_DELAY) == pdTRUE)
+    {
+      localImuData = localImuDataGL;
+      xSemaphoreGive(localImuSemaphore);
+    }
+    if (xSemaphoreTake(remoteImuSemaphore, portMAX_DELAY) == pdTRUE)
+    {
+      remoteImuData = remoteImuDataGL;
+      xSemaphoreGive(remoteImuSemaphore);
+    }
+
+    // Receive a notification
+    static int16_t x1, y1;
+    static uint16_t w, h;
+    static unsigned long drawNotificationUntil = 0;
+    static char *notification;
     if (uxQueueMessagesWaiting(displayNotificationQueue) > 0 && millis() > drawNotificationUntil)
     {
       if (xQueueReceive(displayNotificationQueue, &notification, portMAX_DELAY) == pdTRUE)
@@ -73,17 +90,17 @@ void renderTask(void *pvParameters)
       if (currentBluetoothMode == MODE_CONNECTED)
       {
         // Some of the axes need inverting to achieve desired behaviour. These were found by trial and error
-        imu::Quaternion quat1 = {localImuData.rotation.w(), -localImuData.rotation.x(), localImuData.rotation.y(), localImuData.rotation.z()};
-        imu::Quaternion quat2 = {remoteImuData.rotation.w(), remoteImuData.rotation.x(), -remoteImuData.rotation.y(), -remoteImuData.rotation.z()};
-        // Calculate rotation of remote device from the point of view of the local device 
+        imu::Quaternion quat1 = {localImuData.orientation.w(), -localImuData.orientation.x(), localImuData.orientation.y(), localImuData.orientation.z()};
+        imu::Quaternion quat2 = {remoteImuData.orientation.w(), remoteImuData.orientation.x(), -remoteImuData.orientation.y(), -remoteImuData.orientation.z()};
+        // Calculate orientation of remote device from the point of view of the local device
         rerotatedQuat = quat1 * quat2;
       }
       else
       {
-        // Make a rotation quaternion to rotate the cube so the long axis faces north
+        // Make a orientation quaternion to rotate the cube so the long axis faces north
         imu::Quaternion appliedRotation = {0.5, 0.5, -0.5, -0.5}; // calculated using https://quaternions.online/
         // Invert the orientation to achieve the effect of "still in space cube"
-        rerotatedQuat = {renderedBnoData.rotation.w(), -renderedBnoData.rotation.x(), renderedBnoData.rotation.y(), renderedBnoData.rotation.z()};
+        rerotatedQuat = {renderedBnoData.orientation.w(), -renderedBnoData.orientation.x(), renderedBnoData.orientation.y(), renderedBnoData.orientation.z()};
         rerotatedQuat = rerotatedQuat * appliedRotation; // apply orientation to face Z axis to north
       }
 
@@ -96,8 +113,8 @@ void renderTask(void *pvParameters)
     }
     case MODE_LEVEL:
     {
-      // Convert rotation to to yaw, pitch, roll
-      euler = renderedBnoData.rotation.toEuler();
+      // Convert orientation to to yaw, pitch, roll
+      euler = renderedBnoData.orientation.toEuler();
 
       // Euler angles are in radians, convert to degrees
       euler.toDegrees();
@@ -173,14 +190,14 @@ void renderTask(void *pvParameters)
     case MODE_RAW:
     {
       const int graph_size = 20;
+      // Calculated value storage for graphs
       static int8_t accelVals[3][graph_size] = {0};
       static int8_t magVals[3][graph_size] = {0};
       static int8_t gyroVals[3][graph_size] = {0};
+      // Draw graphs
       drawVectorGraph(display, renderedBnoData.accelerometer, 30, graph_size, accelVals[0], accelVals[1], accelVals[2]);
       drawVectorGraph(display, renderedBnoData.gyroscope, 45 + graph_size, graph_size, gyroVals[0], gyroVals[1], gyroVals[2]);
       drawVectorGraph(display, renderedBnoData.magnetometer, SCREEN_WIDTH - graph_size, graph_size, magVals[0], magVals[1], magVals[2]);
-      //  Draw the cube model using the rerotated Quaternion
-      // drawAccelGraph(display, renderedBnoData.linearAccel);
       break;
     }
     case MODE_CLK_SYNC:
@@ -198,6 +215,7 @@ void renderTask(void *pvParameters)
     }
 
     // Show notification
+    const uint16_t padding = 3;
     if (millis() < drawNotificationUntil)
     {
       // Set cursor position to horizontally center the text
@@ -210,8 +228,7 @@ void renderTask(void *pvParameters)
       display.setTextColor(SH110X_WHITE);
       display.print(notification);
     }
-    // display.setCursor(SCREEN_WIDTH - 30, SCREEN_HEIGHT - 30);
-    // display.print(analogRead(LIPO_MONITOR_PIN));
+
     if (currentBluetoothMode == MODE_CONNECTED || (currentBluetoothMode == MODE_CONNECTING && TOGGLE_200MS_STATE))
     {
       renderedBnoData = remoteImuData;
@@ -231,19 +248,40 @@ void renderTask(void *pvParameters)
     }
 
     // Draw battery level icon
+    static int batt_level = 0;
+    static int batt_pixels = 0;
+    static unsigned long nextBatteryMesurement = 0;
     if (nextBatteryMesurement < millis())
     {
       batt_level = analogRead(LIPO_MONITOR_PIN);
       batt_pixels = map(batt_level, 1700, 2300, 0, 8);
+      batt_pixels = constrain(batt_pixels, 0, 8);
       nextBatteryMesurement = millis() + 3000;
     }
-
     display.drawBitmap(SCREEN_WIDTH - 13, 0, batterySprite, batterySprite_W, batterySprite_H, SH110X_INVERSE);
-    batt_pixels = constrain(batt_pixels, 0, 8);
     display.fillRect(SCREEN_WIDTH - 13 + 2, 2, batt_pixels, 3, SH110X_INVERSE);
 
+    // Testing only
+    /*
+    //display.setCursor(30, 0);
+    //display.print("INT at:");
+    //display.print(test_timestamp);
+    display.setCursor(30, 0);
+    display.print("Sent:");
+    display.print(sentSyncTimestamp);
+    display.setCursor(20, 10);
+    display.print("Received at:");
+    display.print(reveivedSyncTimestampAt);
+    // display.setCursor(30, 10);
+    // display.print(renderTime);
+    */
+
     display.display();
-    delay(10);
+    // renderTime = millis() - startTime;
+    if (currentOperationMode == MODE_CLK_SYNC)
+      delay(5);
+    else
+      delay(30);
   }
 }
 
@@ -305,7 +343,7 @@ void drawRotatedObj(Adafruit_SH1106G &display, Model model, float objSize, float
     Vertex vertex1 = model.vertices[index.v1];
     Vertex vertex2 = model.vertices[index.v2];
 
-    // Apply size to line coordinates
+    // Apply scale to line coordinates
     float x1 = vertex1.x * objSize;
     float y1 = vertex1.y * objSize;
     float z1 = vertex1.z * objSize;
@@ -336,7 +374,7 @@ void rotatePoint(float &x, float &y, float &z, imu::Quaternion quat)
   // Convert the point to a quaternion
   imu::Quaternion p = {0, x, y, z};
 
-  // Multiply the rotation imu::Quaternion by the point imu::Quaternion (q * p * qConj)
+  // Multiply the orientation imu::Quaternion by the point imu::Quaternion (q * p * qConj)
   imu::Quaternion finalResult = quat * p * quat.conjugate();
 
   // Update the point coordinates

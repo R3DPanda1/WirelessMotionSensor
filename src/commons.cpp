@@ -6,11 +6,18 @@ volatile RecordingMode currentRecordingMode = IDLE;
 volatile SyncMode currentSyncMode = MODE_IDLE;
 volatile SD_State currentSdState = REMOVED;
 volatile BluetoothConnectionState btRole = UNPAIRED;
+SemaphoreHandle_t localImuSemaphore;
+SemaphoreHandle_t remoteImuSemaphore;
 
-IMU_Data localImuData = {0};
-IMU_Data remoteImuData = {0};
+IMU_Data localImuDataGL = {0};
+IMU_Data remoteImuDataGL = {0};
 
 unsigned long millis_sync_offset = 0;
+
+//Testing
+unsigned long test_timestamp = 0;
+//unsigned long sentSyncTimestamp = 0;
+//unsigned long reveivedSyncTimestampAt = 0;
 
 unsigned long syncedMillis()
 {
@@ -37,4 +44,10 @@ void IRAM_ATTR clk_sync_isr()
     currentSyncMode = MODE_HIGH_G_DETECTED;
     detachInterrupt(HIGH_G_INT_PIN);
   }
+}
+
+void IRAM_ATTR test_isr()
+{
+  test_timestamp = syncedMillis();
+  //millis_sync_offset = millis(); // perfect clock sync using common interrupt button
 }
