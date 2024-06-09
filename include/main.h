@@ -16,7 +16,4 @@
 #error Serial Bluetooth not available or not enabled. It is only available for the ESP32 chip.
 #endif
 
-#define LIPO_MON_PIN 33
-#define BNO_INT_PIN 17
-
 #endif // MAIN_H

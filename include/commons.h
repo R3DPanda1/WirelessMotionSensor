@@ -2,10 +2,10 @@
 #define COMMONS_H
 
 /**
- * @file commons.h
+ * @file commonsh
  *
  * This file serves as a central place for common definitions and
- * declarations used throughout the project.
+ * declarations used throughout the project
  */
 
 #include "utility/imumaths.h"
@@ -14,28 +14,47 @@
 #include <freertos/queue.h>
 #include <Arduino.h>
 
-#define LIPO_MONITOR_PIN 33
+#define LIPO_MONITOR_PIN 33  // Pin for LiPo battery monitoring
 
-#define TOGGLE_200MS_STATE ((syncedMillis() % 400 < 200) ? HIGH : LOW)
+#define TOGGLE_200MS_STATE ((syncedMillis() % 400 < 200) ? HIGH : LOW)  // Macro for toggling state every 200ms
 
 extern QueueHandle_t displayNotificationQueue;
+
+/**
+ * @brief Displays a notification message on the OLED display
+ * 
+ * @param message The message to be displayed
+ */
 void displayNotification(const char *message);
 
 // Testing only declarations
-#define TEST_INT_PIN 15
+#define TEST_INT_PIN 15  // Pin for test interrupt
 extern unsigned long test_timestamp;
 void IRAM_ATTR test_isr();
 
 extern unsigned long sentSyncTimestamp;
 extern unsigned long reveivedSyncTimestampAt;
 
-#define HIGH_G_INT_PIN 17
-#define SYNC_BT_TOLERANCE 10 // maximum accepted time difference between devices in ms
+#define HIGH_G_INT_PIN 17  // Pin for high-g interrupt
+#define SYNC_BT_TOLERANCE 10  // Maximum accepted time difference between devices in ms
+
+/**
+ * @brief Interrupt service routine for the clock synchronization process
+ */
 void IRAM_ATTR clk_sync_isr();
+
+/**
+ * @brief Gets the synchronized milliseconds
+ * 
+ * @return Synchronized milliseconds
+ */
 unsigned long syncedMillis();
 
-#define SYNC_TIMEOUT 10000 // amount of time to wait for time syncing after last detected hit (in ms)
+#define SYNC_TIMEOUT 10000  // Amount of time to wait for time syncing after last detected hit (in ms)
 
+/**
+ * @brief Enum for synchronization modes
+ */
 enum SyncMode
 {
     MODE_IDLE,
@@ -47,6 +66,9 @@ enum SyncMode
 };
 extern volatile SyncMode currentSyncMode;
 
+/**
+ * @brief Enum for SD card states
+ */
 enum SD_State
 {
     REMOVED,
@@ -56,6 +78,11 @@ enum SD_State
 };
 extern volatile SD_State currentSdState;
 
+
+
+/**
+ * @brief Structure for Fusion Data
+ */
 const char FusionData_ID = 'F';
 struct FusionData
 {
@@ -64,6 +91,10 @@ struct FusionData
     imu::Quaternion orientation;
 };
 
+
+/**
+ * @brief Structure for Raw Data
+ */
 const char RawData_ID = 'R';
 struct RawData
 {
@@ -73,8 +104,12 @@ struct RawData
     imu::Vector<3> gyroscope;
 };
 
+// Character ID for synchronization data
 const char SyncStart_ID = 'S';
 
+/**
+ * @brief Structure for Spriit Level Data
+ */
 const char LevelData_ID = 'L';
 struct LevelData
 {
@@ -82,6 +117,9 @@ struct LevelData
     imu::Quaternion orientation;
 };
 
+/**
+ * @brief Structure for Temperature Data
+ */
 const char TempData_ID = 'T';
 struct TempData
 {
@@ -89,6 +127,9 @@ struct TempData
     int8_t temperature;
 };
 
+/**
+ * @brief Structure for IMU Data
+ */
 struct IMU_Data
 {
     unsigned long timestamp;
@@ -103,6 +144,9 @@ struct IMU_Data
 extern IMU_Data localImuDataGL;
 extern IMU_Data remoteImuDataGL;
 
+/**
+ * @brief Enum for operation modes
+ */
 enum OperationMode
 {
     MODE_FUSION,
@@ -113,6 +157,9 @@ enum OperationMode
 };
 extern volatile OperationMode currentOperationMode;
 
+/**
+ * @brief Enum for Bluetooth modes
+ */
 enum BluetoothMode
 {
     MODE_DISCONNECTED,
@@ -123,6 +170,9 @@ enum BluetoothMode
 };
 extern volatile BluetoothMode currentBluetoothMode;
 
+/**
+ * @brief Enum for Bluetooth connection states
+ */
 enum BluetoothConnectionState
 {
     UNPAIRED,
@@ -131,6 +181,9 @@ enum BluetoothConnectionState
 };
 extern volatile BluetoothConnectionState btRole;
 
+/**
+ * @brief Enum for recording modes
+ */
 enum RecordingMode
 {
     IDLE,
@@ -142,4 +195,4 @@ extern volatile RecordingMode currentRecordingMode;
 extern SemaphoreHandle_t localImuSemaphore;
 extern SemaphoreHandle_t remoteImuSemaphore;
 
-#endif // BLUETOOTH_H
+#endif // COMMONS_H

@@ -26,10 +26,16 @@
 
 #define CALIBRATION_SAVE_TIME 60000 //time in ms when calibration data is saved to flash memory
 
-#define BNO055_ADDRESS 0x28
+#define BNO055_ADDRESS 0x28 // BNO055 I2C address
 
+extern TaskHandle_t sensorTaskHandle; // Handle for the sensor task
+extern Adafruit_BNO055 bno; // BNO055 object
+
+/**
+ * @brief Task function for interfacing with the IMU
+ * 
+ * @param pvParameters Pointer to the parameters passed to the task
+ */
 void sensorTask(void* pvParameters);
-extern TaskHandle_t sensorTaskHandle;
-extern Adafruit_BNO055 bno;
 
 #endif // SENSOR_H

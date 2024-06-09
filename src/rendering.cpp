@@ -293,7 +293,7 @@ int scaleLogarithmically(float val, float sensitivity)
   return (int)val;
 }
 
-void drawVectorGraph(Adafruit_SH1106G &display, imu::Vector<3> accel, int x_position, const int graph_x_size, int8_t *xVals, int8_t *yVals, int8_t *zVals)
+void drawVectorGraph(Adafruit_SH1106G &display, imu::Vector<3> vector, int x_position, const int graph_x_size, int8_t *xVals, int8_t *yVals, int8_t *zVals)
 {
   int y_scale = 4;
 
@@ -303,17 +303,17 @@ void drawVectorGraph(Adafruit_SH1106G &display, imu::Vector<3> accel, int x_posi
   memmove(zVals, zVals + 1, graph_x_size - 1);
 
   // Add new scaled and shifted data to the end
-  xVals[graph_x_size - 1] = -1 * constrain(scaleLogarithmically(accel.x(), y_scale), -10, 10);
-  yVals[graph_x_size - 1] = -1 * constrain(scaleLogarithmically(accel.y(), y_scale), -10, 10);
-  zVals[graph_x_size - 1] = -1 * constrain(scaleLogarithmically(accel.z(), y_scale), -10, 10);
+  xVals[graph_x_size - 1] = -1 * constrain(scaleLogarithmically(vector.x(), y_scale), -10, 10);
+  yVals[graph_x_size - 1] = -1 * constrain(scaleLogarithmically(vector.y(), y_scale), -10, 10);
+  zVals[graph_x_size - 1] = -1 * constrain(scaleLogarithmically(vector.z(), y_scale), -10, 10);
 
   // SCREEN_WIDTH - graph_x_size - 8
   display.drawBitmap(x_position - 7, 1, triAxisSprite, 8, sizeof(triAxisSprite), SH110X_WHITE);
 
   int accel_nums[3] = {
-      (int)(accel.x() * 10),
-      (int)(accel.y() * 10),
-      (int)(accel.z() * 10)};
+      (int)(vector.x() * 10),
+      (int)(vector.y() * 10),
+      (int)(vector.z() * 10)};
 
   int len;
   for (int i = 0; i < 3; i++)
